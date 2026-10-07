@@ -363,3 +363,22 @@ kbd{font-family:var(--mono);font-size:11.5px;background:#0f1115;border:1px solid
 .sel-fields{display:flex;gap:10px;flex-wrap:wrap}
 .sel-actions{display:flex;gap:8px 18px;flex-wrap:wrap;align-items:center}
 .grp-btns:last-child{margin-left:auto}
+
+/* keyboard dock (phones / narrow): fixed to the bottom, collapsible */
+.kb-handle{display:none}
+@media (max-width:720px){
+  body{padding-bottom:var(--dock-h,190px)}
+  .kbcard{position:fixed;left:0;right:0;bottom:0;z-index:40;margin:0;border-radius:14px 14px 0 0;
+    padding:0 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.35);border-bottom:0}
+  .kb-handle{display:flex;align-items:center;justify-content:center;width:100%;height:26px;margin:0;padding:0;background:none;border:0;color:var(--muted,#9aa);cursor:pointer}
+  .kb-handle svg{transition:transform .2s}
+  .kbcard.collapsed .kb-handle svg{transform:rotate(180deg)}
+  .kbcard .card-head{margin-bottom:4px}
+  .kbcard .card-head h2{display:none}
+  .kbcard .oct-controls{width:100%;justify-content:space-between}
+  .kbcard .piano{height:112px;margin:2px 0 0}
+  .kbcard .kb-hint{display:none}
+  .kbcard.collapsed .kb-body,.kbcard.collapsed .card-head{display:none}
+  .kbcard.collapsed{padding-bottom:calc(2px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(var(--dock-h,190px) + 12px)!important}
+}

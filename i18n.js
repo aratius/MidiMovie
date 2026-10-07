@@ -316,6 +316,7 @@
       'mine.empty': 'Sounds you save appear here.', 'mine.delete': 'Delete this saved sound',
       'simple.low': 'play low notes',
 
+      'kb.toggle': 'Show / hide keyboard',
       'kb.title': 'Keyboard',
       'kb.hint': 'No MIDI keyboard? Play with your computer keyboard (the letters shown on the piano) or click the keys.',
       'help.shortcuts': 'Space play/pause · Esc stop · Home rewind · Z/X octave',
@@ -638,6 +639,7 @@
       'mine.empty': '保存的音色会显示在这里。', 'mine.delete': '删除此已保存音色',
       'simple.low': '请弹低音',
 
+      'kb.toggle': '显示/隐藏键盘',
       'kb.title': '键盘',
       'kb.hint': '没有 MIDI 键盘？可以用电脑键盘（琴键上显示的字母）演奏，或直接点击琴键。',
       'help.shortcuts': '空格 播放/暂停 · Esc 停止 · Home 回到开头 · Z/X 八度',
@@ -960,6 +962,7 @@
       'mine.empty': '保存した音色がここに表示されます。', 'mine.delete': '保存した音色を削除',
       'simple.low': '低音で弾く',
 
+      'kb.toggle': 'キーボードを開閉',
       'kb.title': 'キーボード',
       'kb.hint': 'MIDIキーボードがなくても、PCのキーボード(鍵盤に表示された文字)や画面の鍵盤クリックで演奏できます。',
       'help.shortcuts': 'Space 再生/一時停止 · Esc 停止 · Home 先頭へ · Z/X オクターブ',

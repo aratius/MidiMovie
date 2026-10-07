@@ -153,7 +153,8 @@
     </section>
 
     <!-- KEYBOARD -->
-    <section class="card kbcard">
+    <section class="card kbcard" id="kbDock">
+      <button class="kb-handle" id="kbToggle" aria-expanded="true" aria-controls="kbBody" data-i18n-title="kb.toggle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="card-head">
         <h2 data-i18n="kb.title"></h2>
         <div class="oct-controls">
@@ -163,12 +164,14 @@
             <button class="tbtn small" id="trDown">−</button><b class="mono" id="trVal">0</b><button class="tbtn small" id="trUp">+</button></div>
         </div>
       </div>
+      <div class="kb-body" id="kbBody">
       <div class="piano-wrap">
         <button class="tbtn small prange" id="pianoLeft" aria-label="‹">‹</button>
         <div class="piano" id="piano"></div>
         <button class="tbtn small prange" id="pianoRight" aria-label="›">›</button>
       </div>
       <div class="kb-hint" data-i18n="kb.hint"></div>
+      </div>
     </section>
   </div>
 

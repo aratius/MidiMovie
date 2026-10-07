@@ -608,6 +608,18 @@
   window.addEventListener('resize', () => { if (isNarrow() !== lastNarrow) buildPiano(); });
   $('pianoLeft').addEventListener('click', () => { PK.base = clamp(PK.base - 12, 24, 84); buildPiano(); });
   $('pianoRight').addEventListener('click', () => { PK.base = clamp(PK.base + 12, 24, 84); buildPiano(); });
+  /* keyboard dock: collapsible, remembered, body padding follows its height */
+  (function () {
+    const dock = $('kbDock'), btn = $('kbToggle'); if (!dock || !btn) return;
+    const key = 'midimovie.kbDock';
+    const set = (c) => { dock.classList.toggle('collapsed', c); btn.setAttribute('aria-expanded', String(!c)); try { localStorage.setItem(key, c ? '1' : '0'); } catch (e) {} fit(); };
+    const fit = () => { const on = window.innerWidth <= 720; document.documentElement.style.setProperty('--dock-h', (on ? dock.offsetHeight + 8 : 0) + 'px'); };
+    btn.addEventListener('click', () => set(!dock.classList.contains('collapsed')));
+    let init = false; try { init = localStorage.getItem(key) === '1'; } catch (e) {}
+    dock.classList.toggle('collapsed', init); btn.setAttribute('aria-expanded', String(!init));
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(dock);
+    window.addEventListener('resize', fit); fit();
+  })();
   const pKeys = new Map(); // pointerId -> { key, note }  (multi-touch + glissando)
   const keyAt = (x, y) => { const e = document.elementFromPoint(x, y), k = e && e.closest && e.closest('.key'); return k && piano.contains(k) ? k : null; };
   const velFrom = (k, y) => { const r = k.getBoundingClientRect(); return clamp(Math.round(45 + 82 * ((y - r.top) / Math.max(1, r.height))), 30, 127); };
