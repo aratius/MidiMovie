@@ -31,8 +31,11 @@
     { key: 'pitchDecay', type: 'range', min: 0.01, max: 2, step: 0.01, group: 'pitch', fmt: 'sec' },
     { key: 'vibRate', type: 'range', min: 0.1, max: 12, step: 0.1, group: 'pitch', fmt: 'hzs' },
     { key: 'vibDepth', type: 'range', min: 0, max: 100, step: 1, group: 'pitch', fmt: 'int' },
+    { key: 'tremRate', type: 'range', min: 0.1, max: 12, step: 0.1, group: 'pitch', fmt: 'hzs' },
+    { key: 'tremDepth', type: 'range', min: 0, max: 1, step: 0.01, group: 'pitch', fmt: 'pct' },
     { key: 'bendRange', type: 'range', min: 0, max: 24, step: 1, group: 'pitch', fmt: 'int' },
 
+    { key: 'spread', type: 'range', min: 0, max: 1, step: 0.01, group: 'out', fmt: 'pct' },
     { key: 'reverb', type: 'range', min: 0, max: 1, step: 0.01, group: 'out', fmt: 'pct' },
     { key: 'gain', type: 'range', min: 0, max: 1, step: 0.01, group: 'out', fmt: 'pct' }
   ];
@@ -43,7 +46,7 @@
     fmAmount: 0, fmRatio: 2, fmDecay: 0.4,
     filterType: 'lowpass', cutoff: 4000, resonance: 1, keytrack: 0.5, fEnv: 0, fDecay: 0.3,
     attack: 0.005, decay: 0.3, sustain: 0.6, release: 0.25,
-    pitchEnv: 0, pitchDecay: 0.08, vibRate: 5, vibDepth: 0, bendRange: 2,
+    pitchEnv: 0, pitchDecay: 0.08, vibRate: 5, vibDepth: 0, tremRate: 4, tremDepth: 0, bendRange: 2, spread: 0,
     reverb: 0.15, gain: 0.6
   };
   const mk = (o) => Object.assign({}, BASE, o);
@@ -158,11 +161,23 @@
     env.gain.linearRampToValueAtTime(peak, when + A);
     env.gain.setTargetAtTime(peak * S, when + A, D / 3);
 
-    filt.connect(env); env.connect(rel); rel.connect(ch.input);
-
     const sources = [];
     const detuneTargets = [];
     const nodes = [filt, env, rel];
+    filt.connect(env);
+    let last = env;
+    if (p.tremDepth > 0) { // tremolo (amplitude modulation)
+      const tg = ctx.createGain(); tg.gain.value = 1 - p.tremDepth / 2;
+      const tl = ctx.createOscillator(); tl.frequency.value = p.tremRate;
+      const tlg = ctx.createGain(); tlg.gain.value = p.tremDepth / 2;
+      tl.connect(tlg); tlg.connect(tg.gain); tl.start(when);
+      env.connect(tg); last = tg; sources.push(tl); nodes.push(tg, tlg);
+    }
+    last.connect(rel);
+    if (p.spread > 0 && ctx.createStereoPanner) { // deterministic per-note stereo position
+      const pan = ctx.createStereoPanner(); pan.pan.value = Math.max(-1, Math.min(1, p.spread * Math.sin(note * 2.399)));
+      rel.connect(pan); pan.connect(ch.input); nodes.push(pan);
+    } else rel.connect(ch.input);
 
     function addOsc(type, freq, level, detuneCents) {
       const o = ctx.createOscillator();

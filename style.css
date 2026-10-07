@@ -197,3 +197,17 @@ details.grp>summary::-webkit-details-marker{display:none}
 .key.white .klet{bottom:16px;color:#5a2a12}
 .key.black .klet{bottom:5px;color:#ffc9a8}
 .kb-hint{font-size:12.5px;color:var(--accent2);background:#241710;border:1px solid #4a2a18;border-radius:8px;padding:7px 10px;margin-bottom:6px}
+
+/* note editor */
+.roll-target{font-size:12.5px;color:var(--accent2);font-weight:700}
+.roll-tools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:flex-end;margin-bottom:10px}
+.roll-tools label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted)}
+.roll-tools label.check{flex-direction:row;align-items:center;color:var(--text);padding-bottom:6px;font-size:12.5px}
+.roll-tools .zoom input{width:130px}
+.roll-wrap{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0e1014}
+#roll{display:block;width:100%;height:250px;touch-action:none;outline:none}
+.roll-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);background:#0e1014;font-size:13px;text-align:center;padding:12px}
+.note-form{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:flex-end;margin:10px 0 6px;min-height:38px}
+.note-form label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted)}
+.note-form input{width:96px}
+.layer.editing{box-shadow:0 0 0 1px var(--accent) inset}

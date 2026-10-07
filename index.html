@@ -76,6 +76,33 @@
       </div>
     </section>
 
+    <!-- NOTE EDITOR -->
+    <section class="card roll" id="rollCard">
+      <div class="card-head">
+        <h2 data-i18n="roll.title"></h2>
+        <span class="roll-target" id="rollTarget"></span>
+      </div>
+      <div class="roll-tools">
+        <label><span data-i18n="roll.snap"></span>
+          <select id="rollSnap"><option value="0" data-i18n="roll.snapOff"></option><option value="0.01" selected>10 ms</option><option value="0.05">50 ms</option><option value="0.1">100 ms</option><option value="0.25">250 ms</option><option value="0.5">500 ms</option></select></label>
+        <label class="zoom"><span data-i18n="roll.zoom"></span><input type="range" id="rollZoom" min="0" max="1000" value="400"></label>
+        <label class="check"><input type="checkbox" id="rollFollow" checked><span data-i18n="roll.follow"></span></label>
+        <button class="btn small" id="rollFit" data-i18n="roll.fit"></button>
+        <button class="btn small" id="rollUndo" data-i18n="roll.undo"></button>
+        <button class="btn small" id="rollRedo" data-i18n="roll.redo"></button>
+        <button class="btn small danger" id="rollDel" data-i18n="roll.delete"></button>
+      </div>
+      <div class="roll-wrap" id="rollWrap"><canvas id="roll" tabindex="0"></canvas><div class="roll-empty" id="rollEmpty" data-i18n="roll.none"></div></div>
+      <div class="note-form" id="noteForm">
+        <span class="muted" id="noteSel"></span>
+        <label><span data-i18n="roll.start"></span><input type="number" id="nStart" step="0.001" min="0"></label>
+        <label><span data-i18n="roll.len"></span><input type="number" id="nLen" step="5" min="20"></label>
+        <label><span data-i18n="roll.pitch"></span><input type="number" id="nPitch" step="1" min="0" max="127"></label>
+        <label><span data-i18n="roll.vel"></span><input type="number" id="nVel" step="1" min="1" max="127"></label>
+      </div>
+      <div class="muted small-text" data-i18n="roll.help"></div>
+    </section>
+
     <!-- PENDING TAKE -->
     <section class="card take" id="takeCard" hidden>
       <div class="take-head">

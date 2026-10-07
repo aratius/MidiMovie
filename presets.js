@@ -2,10 +2,13 @@
 (function () {
   const B = Synth.BASE;
   const P = (o) => Object.assign({}, B, o);
-  const CATS = ['keys', 'lead', 'bass', 'pad', 'pluck', 'edm', 'hits', 'sfx'];
+  const CATS = ['ref', 'keys', 'lead', 'bass', 'pad', 'pluck', 'edm', 'hits', 'sfx'];
 
   // [id, cat, {en,zh,ja}, params, flags]
   const L = [
+    /* ---------- REFERENCE (built from your audio / word descriptions) ---------- */
+    ['ghostChoir', 'ref', ['Ghost Choir', '幽灵合唱', 'ゴーストコーラス'], { wave1: 'sawtooth', wave2: 'sawtooth', osc2Level: 0.9, osc2Semi: 0, osc2Detune: 14, cutoff: 2500, resonance: 0.8, keytrack: 0.4, fEnv: 0, attack: 0.55, decay: 0.8, sustain: 0.85, release: 2.2, vibRate: 3.5, vibDepth: 28, tremRate: 3.4, tremDepth: 0.6, spread: 0.7, reverb: 0.75, gain: 0.4 }],
+
     /* ---------- KEYS ---------- */
     ['grandPiano', 'keys', ['Grand Piano', '三角钢琴', 'グランドピアノ'], { wave1: 'triangle', wave2: 'sawtooth', osc2Level: 0.35, osc2Detune: 3, noise: 0.06, cutoff: 2200, resonance: 0.7, keytrack: 0.8, fEnv: 2.5, fDecay: 0.35, attack: 0.002, decay: 2.2, sustain: 0.05, release: 0.35, reverb: 0.25 }],
     ['softPiano', 'keys', ['Soft Piano', '柔和钢琴', 'ソフトピアノ'], { wave1: 'triangle', wave2: 'sine', osc2Level: 0.25, osc2Semi: 12, osc2Detune: 0, cutoff: 1500, resonance: 0.7, keytrack: 0.8, fEnv: 1.5, fDecay: 0.5, attack: 0.004, decay: 2.5, sustain: 0.05, release: 0.5, reverb: 0.35 }],

@@ -227,6 +227,7 @@
     rec.notes.sort((a, b) => a.t - b.t);
     if (!rec.notes.length) { toast(t('take.empty')); updateUI(); return; }
     S.pending = { id: 'p' + Date.now(), notes: rec.notes, bends: rec.bends, params: Object.assign({}, S.inst.params), presetId: S.inst.presetId, volume: 1, mute: false, solo: false, offsetMs: 0, name: null, num: 0, color: '#ffffff' };
+    E.id = 'pending'; E.sel.clear(); E.hist = []; E.redo = []; fitRoll();
     updateUI();
   }
   function keepTake() {
@@ -234,7 +235,9 @@
     T.pause();
     p.num = S.nextNum++; p.color = COLORS[(p.num - 1) % COLORS.length]; p.id = 'l' + p.num + '_' + Date.now();
     disposeLayer(p);
+    const wasEditing = E.id === 'pending';
     S.layers.push(p); S.pending = null;
+    if (wasEditing) E.id = p.id;
     resetScheduler(); refreshAllChannels(); updateUI();
   }
   function discardTake() {
@@ -344,7 +347,7 @@
   }
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function layerEl(l) {
-    const root = el('div', 'layer' + (isAudible(l) ? '' : ' dim')); root.style.setProperty('--c', l.color);
+    const root = el('div', 'layer' + (isAudible(l) ? '' : ' dim') + (typeof E !== 'undefined' && E.id === l.id ? ' editing' : '')); root.style.setProperty('--c', l.color);
     const head = el('div', 'l-head');
     const name = el('input', 'name'); name.type = 'text'; name.value = l.name || ''; name.placeholder = t('layer') + ' ' + l.num; name.setAttribute('aria-label', t('layer.name'));
     name.addEventListener('input', () => { l.name = name.value.trim() || null; });
@@ -373,7 +376,8 @@
     apply.addEventListener('click', () => { l.params = Object.assign({}, S.inst.params); l.presetId = S.inst.presetId; refreshChannel(l); if (T.playing) resetScheduler(); renderLayers(); });
     const ex = el('button', 'btn small', t('layer.export')); ex.title = t('layer.exportTip');
     ex.addEventListener('click', () => exportLayers([l], layerLabel(l), ex));
-    acts.append(use, apply, ex);
+    const ed = el('button', 'btn small', t('layer.edit')); ed.addEventListener('click', () => { setEditTarget(l.id); $('rollCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+    acts.prepend(ed); acts.append(use, apply, ex);
     body.append(lv, ln, acts);
     root.append(head, body);
     return root;
@@ -438,7 +442,7 @@
   ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, () => { scrubbing = false; }));
 
   function frame() {
-    drawTimeline();
+    drawTimeline(); if (typeof drawRoll === 'function') drawRoll();
     $('timeDisplay').textContent = fmtTime(T.time) + ' / ' + fmtTime(T.duration);
     if (!T.hasVideo && T.vPlaying && T.time >= T.vDuration) { T.vOffset = T.vDuration; T.vPlaying = false; killAllVoices(); onPlayState(); if (T.onEnded) T.onEnded(); }
     requestAnimationFrame(frame);
@@ -809,6 +813,257 @@
   });
   window.addEventListener('beforeunload', (e) => { if (S.layers.length || S.pending) { e.preventDefault(); e.returnValue = ''; } });
 
+  /* ================= note editor (piano roll) ================= */
+  const E = { id: null, sel: new Set(), pps: 80, viewStart: 0, lo: 48, hi: 84, snap: 0.01, follow: true, hist: [], redo: [], mode: null, drag: null, pointer: null };
+  const rc = $('roll'), rg = rc.getContext('2d');
+  const GUT = 46, RH = 22;
+  const BLACK = [1, 3, 6, 8, 10];
+  const minPps = 8, maxPps = 800;
+  const ppsToPos = (p) => Math.round(1000 * Math.log(p / minPps) / Math.log(maxPps / minPps));
+  const posToPps = (v) => minPps * Math.pow(maxPps / minPps, v / 1000);
+
+  function editLayer() {
+    if (E.id === 'pending') return S.pending || null;
+    return S.layers.find(l => l.id === E.id) || null;
+  }
+  function ensureEditTarget() {
+    if (editLayer()) return;
+    E.id = S.pending ? 'pending' : (S.layers.length ? S.layers[S.layers.length - 1].id : null);
+    E.sel.clear(); fitRoll();
+  }
+  function setEditTarget(id) { E.id = id; E.sel.clear(); E.hist = []; E.redo = []; fitRoll(); renderLayers(); renderNoteForm(); updateRollHeader(); }
+  function updateRollHeader() {
+    const l = editLayer();
+    $('rollTarget').textContent = l ? t('roll.editing') + ' ' + (l === S.pending ? t('roll.take') : layerLabel(l)) : '';
+    $('rollEmpty').hidden = !!l;
+  }
+  const offOf = (l) => (l.offsetMs || 0) / 1000;
+  function fitRoll() {
+    const l = editLayer();
+    if (l && l.notes.length) {
+      let lo = 127, hi = 0, t0 = 1e9, t1 = 0;
+      l.notes.forEach(n => { lo = Math.min(lo, n.n); hi = Math.max(hi, n.n); t0 = Math.min(t0, n.t); t1 = Math.max(t1, n.t + n.d); });
+      lo = Math.max(0, lo - 4); hi = Math.min(127, hi + 4);
+      while (hi - lo < 20) { if (lo > 0) lo--; if (hi - lo < 20 && hi < 127) hi++; }
+      E.lo = lo; E.hi = hi;
+      const W = (rc.clientWidth || 800) - GUT;
+      E.pps = clamp(W / Math.max(2, (t1 - t0) * 1.15 + 0.5), minPps, maxPps);
+      E.viewStart = Math.max(0, t0 + offOf(l) - 0.3);
+    } else { E.lo = 48; E.hi = 84; E.pps = 80; E.viewStart = 0; }
+    $('rollZoom').value = ppsToPos(E.pps);
+  }
+  const xOf = (tt) => GUT + (tt - E.viewStart) * E.pps;
+  const tOf = (x) => (x - GUT) / E.pps + E.viewStart;
+  function geom() { const H = rc.clientHeight || 250; const rows = E.hi - E.lo + 1; return { H, rows, rowH: (H - RH) / rows }; }
+  const yOf = (n, g) => RH + (E.hi - n) * g.rowH;
+
+  function pushHist() {
+    const l = editLayer(); if (!l) return;
+    E.hist.push({ id: E.id, notes: l.notes.map(n => Object.assign({}, n)) }); if (E.hist.length > 80) E.hist.shift(); E.redo = [];
+  }
+  function restore(from, to) {
+    const h = from.pop(); const l = editLayer(); if (!h || !l || h.id !== E.id) return;
+    to.push({ id: E.id, notes: l.notes.map(n => Object.assign({}, n)) });
+    l.notes = h.notes; E.sel.clear(); afterEdit(); renderNoteForm();
+  }
+  $('rollUndo').addEventListener('click', () => restore(E.hist, E.redo));
+  $('rollRedo').addEventListener('click', () => restore(E.redo, E.hist));
+  function afterEdit(live) {
+    const l = editLayer(); if (!l) return;
+    if (!live) l.notes.sort((a, b) => a.t - b.t);
+    if (ctx) { const r = rtOf(l); r.ev = null; if (T.playing && !live) resetScheduler(); }
+    renderLayers(); updateTakeInfoSafe();
+  }
+  function updateTakeInfoSafe() { if (S.pending) renderTake(); }
+  function snapT(v) { return E.snap > 0 ? Math.round(v / E.snap) * E.snap : v; }
+
+  function hit(px, py) {
+    const l = editLayer(); if (!l) return null; const g = geom(), off = offOf(l);
+    for (let i = l.notes.length - 1; i >= 0; i--) {
+      const n = l.notes[i], x0 = xOf(n.t + off), x1 = xOf(n.t + n.d + off), y0 = yOf(n.n, g);
+      if (py >= y0 && py <= y0 + g.rowH && px >= x0 - 3 && px <= x1 + 3) {
+        const edge = Math.min(7, Math.max(3, (x1 - x0) / 3));
+        return { note: n, zone: px >= x1 - edge ? 'right' : (px <= x0 + edge ? 'left' : 'body') };
+      }
+    }
+    return null;
+  }
+  function audNote(l, n, v) {
+    if (!ctx || T.playing) return;
+    ensureAudio(); const ch = chanFor(l), now = ctx.currentTime;
+    const voice = Synth.startVoice(ch, Object.assign({}, Synth.BASE, l.params), n, v || 100, now + 0.001);
+    setTimeout(() => voice.release(ctx.currentTime), 220);
+  }
+  let lastSeek = 0;
+  function seekToNote(l, n) { if (T.playing || S.recording) return; const now = performance.now(); if (now - lastSeek < 50) return; lastSeek = now; T.seek(n.t + offOf(l)); }
+
+  function localXY(e) { const r = rc.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  rc.addEventListener('pointerdown', (e) => {
+    const l = editLayer(); if (!l) return; rc.focus(); rc.setPointerCapture(e.pointerId);
+    const [x, y] = localXY(e); const g = geom();
+    if (y < RH) { E.mode = 'scrub'; if (!(S.recording || S.counting)) T.seek(Math.max(0, tOf(x))); return; }
+    const h = hit(x, y);
+    if (h) {
+      if (e.shiftKey) { if (E.sel.has(h.note)) E.sel.delete(h.note); else E.sel.add(h.note); }
+      else if (!E.sel.has(h.note)) { E.sel.clear(); E.sel.add(h.note); }
+      pushHist(); E.mode = h.zone === 'body' ? 'move' : (h.zone === 'left' ? 'rl' : 'rr');
+      E.drag = { x, y, prim: h.note, orig: new Map(Array.from(E.sel).map(n => [n, Object.assign({}, n)])), moved: false };
+      audNote(l, h.note.n, h.note.v); seekToNote(l, h.note); renderNoteForm();
+    } else {
+      if (!e.shiftKey) E.sel.clear();
+      E.mode = 'band'; E.drag = { x, y, x2: x, y2: y, base: new Set(E.sel) }; renderNoteForm();
+    }
+  });
+  rc.addEventListener('pointermove', (e) => {
+    const l = editLayer(); if (!l) return; const [x, y] = localXY(e); const g = geom(); const off = offOf(l);
+    if (!E.mode) { const h = y < RH ? null : hit(x, y); rc.style.cursor = y < RH ? 'col-resize' : (h ? (h.zone === 'body' ? 'grab' : 'ew-resize') : 'crosshair'); return; }
+    if (E.mode === 'scrub') { if (!(S.recording || S.counting)) T.seek(Math.max(0, tOf(x))); return; }
+    const d = E.drag;
+    if (E.mode === 'band') {
+      d.x2 = x; d.y2 = y; const xa = Math.min(d.x, x), xb = Math.max(d.x, x), ya = Math.min(d.y, y), yb = Math.max(d.y, y);
+      E.sel = new Set(d.base);
+      l.notes.forEach(n => { const x0 = xOf(n.t + off), x1 = xOf(n.t + n.d + off), y0 = yOf(n.n, g); if (x1 >= xa && x0 <= xb && y0 + g.rowH >= ya && y0 <= yb) E.sel.add(n); });
+      return;
+    }
+    d.moved = true;
+    const dtRaw = (x - d.x) / E.pps, p0 = d.orig.get(d.prim);
+    if (E.mode === 'move') {
+      let ns = snapT(p0.t + off + dtRaw) - off; const dt = Math.max(ns - p0.t, -Math.min.apply(null, Array.from(d.orig.values()).map(o => o.t)));
+      const dn = Math.round((d.y - y) / g.rowH);
+      d.orig.forEach((o, n) => { n.t = o.t + dt; const nn = clamp(o.n + dn, 0, 127); if (nn !== n.n && n === d.prim) audNote(l, nn, n.v); n.n = nn; });
+      if (E.hi < d.prim.n + 2) E.hi = Math.min(127, d.prim.n + 3); if (E.lo > d.prim.n - 2) E.lo = Math.max(0, d.prim.n - 3);
+      seekToNote(l, d.prim);
+    } else if (E.mode === 'rr') {
+      const end = snapT(p0.t + off + p0.d + dtRaw) - off;
+      d.orig.forEach((o, n) => { n.d = Math.max(0.02, o.d + (end - (p0.t + p0.d))); });
+    } else if (E.mode === 'rl') {
+      const ns = Math.max(0, snapT(p0.t + off + dtRaw) - off), dt = Math.min(ns - p0.t, p0.d - 0.02);
+      d.orig.forEach((o, n) => { const k = Math.min(dt, o.d - 0.02); n.t = o.t + k; n.d = o.d - k; });
+      seekToNote(l, d.prim);
+    }
+    renderNoteForm(true);
+  });
+  const endDrag = () => {
+    if (!E.mode) return;
+    const was = E.mode, moved = E.drag && E.drag.moved; E.mode = null; E.drag = null;
+    if ((was === 'move' || was === 'rl' || was === 'rr')) { if (moved) afterEdit(); else { E.hist.pop(); } renderNoteForm(); }
+  };
+  rc.addEventListener('pointerup', endDrag); rc.addEventListener('pointercancel', endDrag);
+  rc.addEventListener('dblclick', (e) => {
+    const l = editLayer(); if (!l) return; const [x, y] = localXY(e); if (y < RH || hit(x, y)) return; const g = geom();
+    pushHist();
+    const nn = clamp(E.hi - Math.floor((y - RH) / g.rowH), 0, 127), off = offOf(l);
+    const note = { t: Math.max(0, snapT(tOf(x)) - off), d: 0.25, n: nn, v: 100 };
+    l.notes.push(note); E.sel.clear(); E.sel.add(note); afterEdit(); audNote(l, nn, 100); renderNoteForm();
+  });
+  rc.addEventListener('wheel', (e) => {
+    e.preventDefault(); const [x] = localXY(e);
+    if (e.ctrlKey || e.metaKey) {
+      const tt = tOf(x); E.pps = clamp(E.pps * Math.exp(-e.deltaY * 0.0025), minPps, maxPps); E.viewStart = Math.max(0, tt - (x - GUT) / E.pps); $('rollZoom').value = ppsToPos(E.pps);
+    } else E.viewStart = Math.max(0, E.viewStart + (e.deltaX || e.deltaY) / E.pps);
+  }, { passive: false });
+  $('rollZoom').addEventListener('input', (e) => { const mid = tOf(GUT + ((rc.clientWidth || 800) - GUT) / 2); E.pps = posToPps(+e.target.value); E.viewStart = Math.max(0, mid - ((rc.clientWidth || 800) - GUT) / 2 / E.pps); });
+  $('rollSnap').addEventListener('change', (e) => { E.snap = parseFloat(e.target.value); });
+  $('rollFollow').addEventListener('change', (e) => { E.follow = e.target.checked; });
+  $('rollFit').addEventListener('click', fitRoll);
+  function deleteSel() {
+    const l = editLayer(); if (!l || !E.sel.size) return; pushHist();
+    l.notes = l.notes.filter(n => !E.sel.has(n)); E.sel.clear(); afterEdit(); renderNoteForm();
+  }
+  $('rollDel').addEventListener('click', deleteSel);
+
+  window.addEventListener('keydown', (e) => {
+    if (isTextTarget(e)) return;
+    const l = editLayer(); if (!l) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); restore(e.shiftKey ? E.redo : E.hist, e.shiftKey ? E.hist : E.redo); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || !E.sel.size) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); return; }
+    const step = e.shiftKey ? 0.1 : 0.01;
+    let dt = 0, dn = 0;
+    if (e.key === 'ArrowLeft') dt = -step; else if (e.key === 'ArrowRight') dt = step;
+    else if (e.key === 'ArrowUp') dn = e.shiftKey ? 12 : 1; else if (e.key === 'ArrowDown') dn = e.shiftKey ? -12 : -1; else return;
+    e.preventDefault(); pushHist();
+    const minT = Math.min.apply(null, Array.from(E.sel).map(n => n.t));
+    E.sel.forEach(n => { n.t = Math.max(0, n.t + Math.max(dt, -minT)); n.n = clamp(n.n + dn, 0, 127); });
+    if (dn) E.sel.forEach(n => audNote(l, n.n, n.v)); else { const f = Array.from(E.sel)[0]; seekToNote(l, f); }
+    afterEdit(); renderNoteForm();
+  });
+
+  /* numeric form */
+  function renderNoteForm(liveOnly) {
+    const l = editLayer(); const sel = Array.from(E.sel);
+    const ids = ['nStart', 'nLen', 'nPitch', 'nVel'];
+    const one = sel.length === 1 ? sel[0] : null;
+    $('noteSel').textContent = !l ? '' : (sel.length > 1 ? t('roll.multi', { n: sel.length }) : (one ? '' : t('roll.noSel')));
+    ids.forEach(id => { $(id).disabled = !one; if (!one) $(id).value = ''; });
+    if (one && document.activeElement && !ids.includes(document.activeElement.id) || (one && !document.activeElement)) {
+      $('nStart').value = (one.t + offOf(l)).toFixed(3); $('nLen').value = Math.round(one.d * 1000); $('nPitch').value = one.n; $('nVel').value = one.v;
+    } else if (one) { $('nStart').value = $('nStart').value || (one.t + offOf(l)).toFixed(3); }
+  }
+  function applyForm(field) {
+    const l = editLayer(); const one = E.sel.size === 1 ? Array.from(E.sel)[0] : null; if (!l || !one) return;
+    pushHist();
+    if (field === 'nStart') one.t = Math.max(0, (parseFloat($('nStart').value) || 0) - offOf(l));
+    if (field === 'nLen') one.d = Math.max(0.02, (parseFloat($('nLen').value) || 20) / 1000);
+    if (field === 'nPitch') { one.n = clamp(Math.round(parseFloat($('nPitch').value) || 60), 0, 127); audNote(l, one.n, one.v); }
+    if (field === 'nVel') one.v = clamp(Math.round(parseFloat($('nVel').value) || 100), 1, 127);
+    afterEdit(); document.activeElement.blur(); renderNoteForm(); seekToNote(l, one);
+  }
+  ['nStart', 'nLen', 'nPitch', 'nVel'].forEach(id => $(id).addEventListener('change', () => applyForm(id)));
+
+  function drawRoll() {
+    const l = editLayer(); const dpr = window.devicePixelRatio || 1;
+    const W = rc.clientWidth || 800, H = rc.clientHeight || 250;
+    if (rc.width !== Math.round(W * dpr) || rc.height !== Math.round(H * dpr)) { rc.width = Math.round(W * dpr); rc.height = Math.round(H * dpr); }
+    rg.setTransform(dpr, 0, 0, dpr, 0, 0); rg.clearRect(0, 0, W, H);
+    if (!l) return;
+    const g = geom(), off = offOf(l), vis = (W - GUT) / E.pps;
+    // follow playhead
+    if (E.follow && T.playing && !E.mode) {
+      const ph = T.time; if (ph > E.viewStart + vis * 0.85 || ph < E.viewStart) E.viewStart = Math.max(0, ph - vis * 0.15);
+    }
+    // rows
+    for (let n = E.lo; n <= E.hi; n++) {
+      const y = yOf(n, g), bk = BLACK.includes(n % 12);
+      rg.fillStyle = bk ? '#0b0d11' : '#12151b'; rg.fillRect(GUT, y, W - GUT, g.rowH);
+      if (n % 12 === 0) { rg.fillStyle = 'rgba(255,255,255,.07)'; rg.fillRect(GUT, y + g.rowH - 1, W - GUT, 1); }
+    }
+    // time grid
+    const steps = [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
+    const step = steps.find(s => s * E.pps >= 60) || 300;
+    rg.font = '10px ui-monospace, Menlo, monospace'; rg.textBaseline = 'middle';
+    if (E.snap > 0 && E.snap * E.pps >= 7) { rg.strokeStyle = 'rgba(255,255,255,.04)'; for (let s = Math.ceil(E.viewStart / E.snap) * E.snap; s < E.viewStart + vis; s += E.snap) { const px = Math.round(xOf(s)) + 0.5; rg.beginPath(); rg.moveTo(px, RH); rg.lineTo(px, H); rg.stroke(); } }
+    rg.fillStyle = '#14171d'; rg.fillRect(GUT, 0, W - GUT, RH);
+    for (let s = Math.ceil(E.viewStart / step) * step; s < E.viewStart + vis; s += step) {
+      const px = Math.round(xOf(s)) + 0.5; rg.strokeStyle = '#2a2f3a'; rg.beginPath(); rg.moveTo(px, 0); rg.lineTo(px, H); rg.stroke();
+      rg.fillStyle = '#8b92a3'; rg.fillText(fmtTime(s).replace(/\.0$/, ''), px + 4, RH / 2);
+    }
+    // video end marker
+    if (T.duration) { const px = xOf(T.duration); if (px < W) { rg.fillStyle = 'rgba(255,255,255,.08)'; rg.fillRect(px, RH, W - px, H - RH); } }
+    // notes
+    rg.save(); rg.beginPath(); rg.rect(GUT, RH, W - GUT, H - RH); rg.clip();
+    const col = l === S.pending ? '#ffb347' : l.color;
+    l.notes.forEach(n => {
+      const x0 = xOf(n.t + off), x1 = xOf(n.t + n.d + off); if (x1 < GUT || x0 > W) return;
+      const y0 = yOf(n.n, g), w = Math.max(3, x1 - x0), sel = E.sel.has(n);
+      rg.globalAlpha = 0.45 + 0.55 * (n.v / 127); rg.fillStyle = col; rg.fillRect(x0, y0 + 1, w, Math.max(3, g.rowH - 2)); rg.globalAlpha = 1;
+      rg.strokeStyle = sel ? '#fff' : 'rgba(0,0,0,.45)'; rg.lineWidth = sel ? 1.8 : 1; rg.strokeRect(x0 + 0.5, y0 + 1.5, w - 1, Math.max(3, g.rowH - 2) - 1);
+      if (sel) { rg.fillStyle = '#fff'; rg.fillRect(x1 - 3, y0 + 2, 2, Math.max(2, g.rowH - 4)); rg.fillRect(x0 + 1, y0 + 2, 2, Math.max(2, g.rowH - 4)); }
+    });
+    if (E.mode === 'band' && E.drag) { const d = E.drag; rg.fillStyle = 'rgba(255,179,71,.12)'; rg.strokeStyle = '#ffb347'; rg.lineWidth = 1; rg.fillRect(Math.min(d.x, d.x2), Math.min(d.y, d.y2), Math.abs(d.x2 - d.x), Math.abs(d.y2 - d.y)); rg.strokeRect(Math.min(d.x, d.x2) + 0.5, Math.min(d.y, d.y2) + 0.5, Math.abs(d.x2 - d.x), Math.abs(d.y2 - d.y)); }
+    rg.restore();
+    // piano gutter
+    rg.fillStyle = '#0b0c0f'; rg.fillRect(0, 0, GUT, H);
+    for (let n = E.lo; n <= E.hi; n++) {
+      const y = yOf(n, g), bk = BLACK.includes(n % 12);
+      rg.fillStyle = bk ? '#1b1e25' : '#d9dbe0'; rg.fillRect(0, y + 0.5, bk ? GUT * 0.62 : GUT - 1, Math.max(1, g.rowH - 1));
+      if (n % 12 === 0 && g.rowH >= 7) { rg.fillStyle = '#44485a'; rg.font = '9px ui-monospace, Menlo, monospace'; rg.fillText(noteName(n), GUT - 24, y + g.rowH / 2); }
+    }
+    // playhead
+    const px = Math.round(xOf(T.time)) + 0.5;
+    if (px >= GUT && px <= W) { rg.strokeStyle = '#fff'; rg.lineWidth = 1.5; rg.beginPath(); rg.moveTo(px, 0); rg.lineTo(px, H); rg.stroke(); rg.lineWidth = 1; rg.fillStyle = '#fff'; rg.beginPath(); rg.moveTo(px - 5, 0); rg.lineTo(px + 5, 0); rg.lineTo(px, 7); rg.fill(); }
+  }
+
   /* ================= language ================= */
   function buildLang() {
     const host = $('langSwitch'); host.innerHTML = '';
@@ -819,7 +1074,7 @@
       host.appendChild(b);
     });
   }
-  function updateUI() { updateTransportUI(); renderTake(); renderLayers(); updateStageUI(); }
+  function updateUI() { updateTransportUI(); renderTake(); ensureEditTarget(); renderLayers(); updateStageUI(); updateRollHeader(); renderNoteForm(); }
   function renderAllText() {
     buildLang(); buildCountIn(); buildChannelSel(); buildPresetSel(); renderSimple(); syncInstrumentUI();
     updateUI(); updateOct(); renderMonitor(); I18N.applyStatic();
@@ -846,6 +1101,6 @@
     updateKeyLabels();
     requestAnimationFrame(frame);
     // test hook
-    window.__mm = { S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, exportLayers, connectMIDI };
+    window.__mm = { E, S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, exportLayers, connectMIDI };
   })();
 })();
