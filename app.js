@@ -14,7 +14,8 @@
   /* ================= state ================= */
   const S = {
     layers: [], pending: null, nextNum: 1,
-    inst: { presetId: 'pluck', params: Object.assign({}, Synth.PRESETS.pluck) },
+    inst: { presetId: 'grandPiano', params: Object.assign({}, PresetLib.get('grandPiano').params), base: Object.assign({}, PresetLib.get('grandPiano').params) },
+    simpleCat: 'keys', tab: 'simple',
     octave: 0, transpose: 0, channel: 0, velFixed: false, typing: true,
     latencyMs: 0, recFrom: 'start', countIn: 3, monitor: true,
     recording: false, counting: false, rec: null, countToken: 0,
@@ -334,7 +335,7 @@
 
   /* ================= layers UI ================= */
   function layerLabel(l) { return l.name || (t('layer') + ' ' + l.num); }
-  function soundLabel(l) { return l.presetId && l.presetId !== 'custom' ? t('pr.' + l.presetId) : t('pr.custom'); }
+  function soundLabel(l) { return (l.presetId && PresetLib.name(l.presetId, I18N.lang)) || t('pr.custom'); }
   function renderLayers() {
     const list = $('layerList'); list.innerHTML = '';
     if (!S.layers.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = t('layers.empty'); list.appendChild(d); }
@@ -474,7 +475,7 @@
   function lit(note, d) { litCount[note] = Math.max(0, litCount[note] + d); const k = keyEls[note]; if (k) k.classList.toggle('on', litCount[note] > 0); }
   function refreshKeys() { Object.keys(keyEls).forEach(n => keyEls[n].classList.toggle('on', litCount[n] > 0)); }
 
-  function updateOct() { $('octVal').textContent = (S.octave > 0 ? '+' : '') + S.octave; $('trVal').textContent = (S.transpose > 0 ? '+' : '') + S.transpose; }
+  function updateOct() { if (typeof updateKeyLabels === 'function') updateKeyLabels(); $('octVal').textContent = (S.octave > 0 ? '+' : '') + S.octave; $('trVal').textContent = (S.transpose > 0 ? '+' : '') + S.transpose; }
   $('octDown').addEventListener('click', () => { S.octave = clamp(S.octave - 1, -4, 4); updateOct(); });
   $('octUp').addEventListener('click', () => { S.octave = clamp(S.octave + 1, -4, 4); updateOct(); });
   $('trDown').addEventListener('click', () => { S.transpose = clamp(S.transpose - 1, -12, 12); updateOct(); });
@@ -483,6 +484,11 @@
   /* computer keyboard */
   const KEYMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, ';': 16 };
   const isTextTarget = (e) => { const tg = e.target; return tg && (tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || (tg.tagName === 'INPUT' && ['text', 'number'].includes(tg.type))); };
+  function updateKeyLabels() {
+    piano.querySelectorAll('.klet').forEach(x => x.remove());
+    if (!S.typing) return;
+    Object.keys(KEYMAP).forEach(k => { const n = transform(60 + KEYMAP[k]), kel = keyEls[n]; if (kel) kel.appendChild(el('span', 'klet', k.toUpperCase())); });
+  }
   window.addEventListener('keydown', (e) => {
     if (isTextTarget(e) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) togglePlay(); return; }
@@ -499,7 +505,7 @@
     const k = e.key.toLowerCase(); if (k in KEYMAP) releaseNote('kb:' + k, e.timeStamp);
   });
   window.addEventListener('blur', () => { Array.from(held.keys()).filter(k => k.startsWith('kb:')).forEach(k => releaseNow(k)); });
-  $('typing').addEventListener('change', (e) => { S.typing = e.target.checked; });
+  $('typing').addEventListener('change', (e) => { S.typing = e.target.checked; updateKeyLabels(); });
   $('panic').addEventListener('click', panic);
 
   /* ================= MIDI ================= */
@@ -645,24 +651,100 @@
       if (def.type === 'select') pe.input.value = v;
       else { pe.input.value = toPos(def, v); pe.val.textContent = fmtVal(def, v); }
     });
-    $('presetSel').value = S.inst.presetId;
+    $('presetSel').value = S.inst.presetId in presetOptionIds() ? S.inst.presetId : 'custom';
+    $('curSound').textContent = (PresetLib.name(S.inst.presetId, I18N.lang)) || t('pr.custom');
+    document.querySelectorAll('.pcard').forEach(c => c.setAttribute('aria-pressed', c.dataset.id === S.inst.presetId));
   }
+  function presetOptionIds() { const o = {}; PresetLib.list.concat(PresetLib.mine()).forEach(p => { o[p.id] = 1; }); return o; }
   function buildPresetSel() {
     const sel = $('presetSel'); sel.innerHTML = '';
-    Synth.PRESET_ORDER.forEach(id => { const o = el('option', null, t('pr.' + id)); o.value = id; sel.appendChild(o); });
+    PresetLib.CATS.forEach(cat => {
+      const og = el('optgroup'); og.label = t('cat.' + cat);
+      PresetLib.list.filter(p => p.cat === cat).forEach(p => { const o = el('option', null, p.names[I18N.lang] || p.names.en); o.value = p.id; og.appendChild(o); });
+      sel.appendChild(og);
+    });
+    const mine = PresetLib.mine();
+    if (mine.length) { const og = el('optgroup'); og.label = t('cat.mine'); mine.forEach(m => { const o = el('option', null, m.name); o.value = m.id; og.appendChild(o); }); sel.appendChild(og); }
     const c = el('option', null, t('pr.custom')); c.value = 'custom'; sel.appendChild(c);
-    sel.value = S.inst.presetId;
+    sel.value = S.inst.presetId in presetOptionIds() ? S.inst.presetId : 'custom';
   }
+
+  /* ---- simple tab ---- */
+  const macroEls = { bright: $('mBright'), length: $('mLength'), space: $('mSpace') };
+  function resetMacros() { Object.values(macroEls).forEach(e => { e.value = 0.5; }); }
+  function applyMacros() {
+    const b = S.inst.base, p = S.inst.params;
+    const bv = parseFloat(macroEls.bright.value), lv = parseFloat(macroEls.length.value), sv = parseFloat(macroEls.space.value);
+    p.cutoff = clamp(b.cutoff * Math.pow(2, (bv - 0.5) * 4), 40, 18000);
+    p.decay = clamp(b.decay * Math.pow(2, (lv - 0.5) * 2), 0.01, 3);
+    p.release = clamp(b.release * Math.pow(2, (lv - 0.5) * 3), 0.01, 5);
+    p.reverb = clamp(b.reverb + (sv - 0.5), 0, 1);
+    if (liveCh) Synth.updateChannel(liveCh);
+    syncInstrumentUI();
+  }
+  Object.values(macroEls).forEach(e => e.addEventListener('input', applyMacros));
+  function auditionNote(low) {
+    ensureAudio();
+    const key = 'aud', note = low ? 36 : 60;
+    playNote(key, note, 100); setTimeout(() => releaseNote(key), 650);
+  }
+  function renderSimple() {
+    const chips = $('catChips'); chips.innerHTML = '';
+    const cats = PresetLib.CATS.concat(['mine']);
+    cats.forEach(c => {
+      const b = el('button', 'chip', t('cat.' + c)); b.type = 'button'; b.setAttribute('aria-pressed', S.simpleCat === c);
+      b.addEventListener('click', () => { S.simpleCat = c; renderSimple(); });
+      chips.appendChild(b);
+    });
+    const grid = $('presetGrid'); grid.innerHTML = '';
+    if (S.simpleCat === 'mine') {
+      const mine = PresetLib.mine();
+      if (!mine.length) grid.appendChild(el('div', 'grid-empty', t('mine.empty')));
+      mine.forEach(m => {
+        const c = el('div', 'pcard', m.name); c.dataset.id = m.id; c.tabIndex = 0; c.setAttribute('role', 'button'); c.setAttribute('aria-pressed', S.inst.presetId === m.id);
+        const del = el('span', 'del', '×'); del.title = t('mine.delete');
+        del.addEventListener('click', (e) => { e.stopPropagation(); PresetLib.deleteMine(m.id); buildPresetSel(); renderSimple(); syncInstrumentUI(); });
+        c.appendChild(del);
+        const go = () => { chooseSound(m.id, m.params, false); };
+        c.addEventListener('click', go); c.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+        grid.appendChild(c);
+      });
+    } else {
+      PresetLib.list.filter(p => p.cat === S.simpleCat).forEach(p => {
+        const c = el('button', 'pcard', p.names[I18N.lang] || p.names.en); c.type = 'button'; c.dataset.id = p.id; c.setAttribute('aria-pressed', S.inst.presetId === p.id);
+        if (p.low) c.appendChild(el('span', 'low', '♪ ' + t('simple.low')));
+        c.addEventListener('click', () => chooseSound(p.id, p.params, p.low));
+        grid.appendChild(c);
+      });
+    }
+  }
+  function chooseSound(id, params, low) { setInstrument(params, id); auditionNote(low); }
+  $('mineSave').addEventListener('click', () => {
+    const name = $('mineName').value.trim() || ((PresetLib.name(S.inst.presetId, I18N.lang) || t('pr.custom')) + ' *');
+    const m = PresetLib.saveMine(name, S.inst.params);
+    S.inst.presetId = m.id; $('mineName').value = ''; S.simpleCat = 'mine';
+    buildPresetSel(); renderSimple(); syncInstrumentUI();
+  });
+  function setTab(tab) {
+    S.tab = tab; try { localStorage.setItem('midimovie.tab', tab); } catch (e) { /* ignore */ }
+    $('tabSimple').hidden = tab !== 'simple'; $('tabPro').hidden = tab !== 'pro';
+    $('tabBtnSimple').setAttribute('aria-selected', tab === 'simple'); $('tabBtnPro').setAttribute('aria-selected', tab === 'pro');
+  }
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
   function setInstrument(params, presetId) {
     S.inst.params = Object.assign({}, Synth.BASE, params); S.inst.presetId = presetId || 'custom';
+    S.inst.base = Object.assign({}, S.inst.params); resetMacros();
     if (liveCh) { liveCh.params = S.inst.params; Synth.updateChannel(liveCh); }
     syncInstrumentUI();
   }
   function onParamEdited() {
-    S.inst.presetId = 'custom'; $('presetSel').value = 'custom';
+    S.inst.presetId = 'custom'; S.inst.base = Object.assign({}, S.inst.params); resetMacros();
+    $('presetSel').value = 'custom'; $('curSound').textContent = t('pr.custom');
+    document.querySelectorAll('.pcard').forEach(c => c.setAttribute('aria-pressed', 'false'));
     if (liveCh) { liveCh.params = S.inst.params; Synth.updateChannel(liveCh); }
   }
-  $('presetSel').addEventListener('change', (e) => { const id = e.target.value; if (id !== 'custom') setInstrument(Synth.PRESETS[id], id); });
+  $('presetSel').addEventListener('change', (e) => { const id = e.target.value; if (id === 'custom') return; const p = PresetLib.get(id); if (p) { setInstrument(p.params, id); auditionNote(p.low); } });
   $('randBtn').addEventListener('click', () => {
     const r = Math.random, pick = (a) => a[Math.floor(r() * a.length)], lr = (a, b) => a * Math.pow(b / a, r());
     const W = ['sine', 'triangle', 'sawtooth', 'square'];
@@ -739,7 +821,7 @@
   }
   function updateUI() { updateTransportUI(); renderTake(); renderLayers(); updateStageUI(); }
   function renderAllText() {
-    buildLang(); buildCountIn(); buildChannelSel(); buildPresetSel();
+    buildLang(); buildCountIn(); buildChannelSel(); buildPresetSel(); renderSimple(); syncInstrumentUI();
     updateUI(); updateOct(); renderMonitor(); I18N.applyStatic();
     refreshInputs();
     if (!midiAccess) { $('midiConnect').textContent = t('midi.connect'); $('midiPill').textContent = t('midi.notConnected'); }
@@ -752,6 +834,8 @@
   /* ================= init ================= */
   (function init() {
     buildInstrument();
+    try { const tb = localStorage.getItem('midimovie.tab'); if (tb === 'pro' || tb === 'simple') S.tab = tb; } catch (e) { /* ignore */ }
+    setTab(S.tab);
     initAudio();
     I18N.setLang(I18N.lang);   // applies static strings + calls renderAllText
     syncInstrumentUI();
@@ -759,6 +843,7 @@
     else if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'midi' }).then(p => { if (p.state === 'granted') connectMIDI(); }).catch(() => {});
     }
+    updateKeyLabels();
     requestAnimationFrame(frame);
     // test hook
     window.__mm = { S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, exportLayers, connectMIDI };

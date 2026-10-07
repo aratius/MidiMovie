@@ -125,6 +125,7 @@
         </div>
       </div>
       <div class="piano" id="piano"></div>
+      <div class="kb-hint" data-i18n="kb.hint"></div>
       <div class="muted small-text" data-i18n="help.shortcuts"></div>
     </section>
   </div>
@@ -155,13 +156,35 @@
     <section class="card inst">
       <div class="card-head">
         <h2 data-i18n="inst.title"></h2>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tabBtnSimple" data-tab="simple" data-i18n="tab.simple"></button>
+          <button class="tab" role="tab" id="tabBtnPro" data-tab="pro" data-i18n="tab.pro"></button>
+        </div>
       </div>
-      <div class="muted small-text" data-i18n="inst.hint"></div>
-      <div class="preset-row">
-        <label><span data-i18n="inst.preset"></span><select id="presetSel"></select></label>
-        <button class="btn small" id="randBtn" data-i18n="inst.random"></button>
+      <div class="current-sound"><span class="muted" data-i18n="inst.current"></span> <b id="curSound"></b></div>
+
+      <div id="tabSimple">
+        <div class="chips" id="catChips"></div>
+        <div class="preset-grid" id="presetGrid"></div>
+        <div class="macros">
+          <label><span data-i18n="macro.bright"></span><input type="range" id="mBright" min="0" max="1" step="0.01" value="0.5"></label>
+          <label><span data-i18n="macro.length"></span><input type="range" id="mLength" min="0" max="1" step="0.01" value="0.5"></label>
+          <label><span data-i18n="macro.space"></span><input type="range" id="mSpace" min="0" max="1" step="0.01" value="0.5"></label>
+        </div>
+        <div class="save-row">
+          <input type="text" id="mineName" maxlength="40" data-i18n-placeholder="mine.name">
+          <button class="btn small" id="mineSave" data-i18n="mine.save"></button>
+        </div>
       </div>
-      <div id="instParams"></div>
+
+      <div id="tabPro" hidden>
+        <div class="muted small-text" data-i18n="inst.hint"></div>
+        <div class="preset-row">
+          <label><span data-i18n="inst.preset"></span><select id="presetSel"></select></label>
+          <button class="btn small" id="randBtn" data-i18n="inst.random"></button>
+        </div>
+        <div id="instParams"></div>
+      </div>
     </section>
   </aside>
 </main>
@@ -173,6 +196,8 @@
 
 <script src="i18n.js"></script>
 <script src="synth.js"></script>
+<script src="trim.js"></script>
+<script src="presets.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
