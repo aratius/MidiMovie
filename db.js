@@ -1,6 +1,6 @@
 /* Project storage on IndexedDB (projects + video blobs). Falls back gracefully when unavailable. */
 (function () {
-  const DB = 'midimovie', VER = 1;
+  const DB = 'midimovie', VER = 2;
   let dbp = null;
   const available = (() => { try { return !!window.indexedDB; } catch (e) { return false; } })();
   function open() {
@@ -8,7 +8,7 @@
     if (dbp) return dbp;
     dbp = new Promise((res, rej) => {
       const r = indexedDB.open(DB, VER);
-      r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('projects', { keyPath: 'id' }); d.createObjectStore('videos', { keyPath: 'id' }); };
+      r.onupgradeneeded = () => { const d = r.result; ['projects', 'videos', 'samples'].forEach(n => { if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, { keyPath: 'id' }); }); };
       r.onsuccess = () => res(r.result);
       r.onerror = () => { dbp = null; rej(r.error); };
       r.onblocked = () => { dbp = null; rej(new Error('blocked')); };
@@ -31,6 +31,10 @@
     del: (id) => tx('projects', 'readwrite', s => s.delete(id)).then(() => tx('videos', 'readwrite', s => s.delete(id))),
     putVideo: (id, blob, name) => tx('videos', 'readwrite', s => s.put({ id, blob, name, type: blob.type })),
     getVideo: (id) => tx('videos', 'readonly', s => s.get(id)),
+    listSamples: () => tx('samples', 'readonly', s => s.getAll()).then(a => a || []),
+    getSample: (id) => tx('samples', 'readonly', s => s.get(id)),
+    putSample: (rec) => tx('samples', 'readwrite', s => s.put(rec)),
+    delSample: (id) => tx('samples', 'readwrite', s => s.delete(id)),
     delVideo: (id) => tx('videos', 'readwrite', s => s.delete(id)),
     async duplicate(id, newName) {
       const rec = await this.get(id); if (!rec) return null;

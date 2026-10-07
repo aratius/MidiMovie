@@ -34,7 +34,7 @@ CONTENT = {
     ('note', 'No sound? Browsers keep audio off until you interact with the page. Click anywhere (the orange banner says so) and play again.'),
   ]),
   ('5. Choosing and designing sounds', [
-    ('p', 'The <b>Instrument</b> panel has two tabs. Whatever you hear while playing is exactly what gets recorded.'),
+    ('p', 'The <b>Instrument</b> panel has three tabs (Simple, Pro and Sampler — the Sampler is covered in its own section). Whatever you hear while playing is exactly what gets recorded.'),
     ('img', 'simple-en.png', 'Simple tab: pick an instrument-style sound.'),
     ('ul', ['<b>Simple</b> — about 55 ready-made sounds in categories: Reference, Keys, Lead, Bass, Pad &amp; Strings, Pluck &amp; Mallet, EDM, Drums &amp; Hits, SFX. Press a card to select it (a short preview plays). Cards marked “play low notes” (kick, sub drop …) sound best around C1–C2.', 'Three macro sliders adjust any sound: <b>Brightness</b>, <b>Length</b>, <b>Space</b> (reverb).', '<b>Save current sound</b> stores your own version under <b>My sounds</b> (kept in this browser, shared by all projects).', '<b>Reference</b> holds sounds built from your audio or descriptions, e.g. <b>Ghost Choir</b> — a soft, slowly rising choir with a gentle trembling (about 3.4 Hz vibrato and tremolo), wide stereo and a long reverb.', 'The sounds are synthesized, so pianos and strings are approximations rather than sampled recordings.']),
     ('img', 'pro-en.png', 'Pro tab: full synthesizer parameters.'),
@@ -125,7 +125,7 @@ CONTENT = {
     ('note', '没有声音？浏览器在你与页面交互之前会禁止播放音频。点击页面任意位置（橙色横幅会提示）后再弹奏。'),
   ]),
   ('5. 选择与设计音色', [
-    ('p', '<b>乐器</b> 面板有两个标签页。你弹奏时听到的声音就是最终录下的声音。'),
+    ('p', '<b>乐器</b> 面板有三个标签页（简易、专业、采样器；采样器见专门章节）。你弹奏时听到的声音就是最终录下的声音。'),
     ('img', 'simple-zh.png', '简易标签页：选择乐器式音色。'),
     ('ul', ['<b>简易</b> — 约 55 种现成音色，分为：参考音色、键盘、主音、贝斯、Pad 与弦乐、拨弦与敲击、EDM、鼓与打击、音效。点击卡片即可选中（并播放一小段试听）。标有“请弹低音”的卡片（底鼓、低频下坠等）在 C1–C2 附近音色最佳。', '三个宏滑块可调整任意音色：<b>明亮度</b>、<b>长度</b>、<b>空间感</b>（混响）。', '<b>保存当前音色</b> 会把你调好的版本存入 <b>我的音色</b>（保存在此浏览器，所有项目共用）。', '<b>参考音色</b> 存放根据你提供的音频或文字描述制作的音色，例如 <b>幽灵合唱</b>——柔和、缓缓升起的合唱，带轻微颤抖（约 3.4 Hz 的颤音与震音）、宽广的立体声和长混响。', '音色由合成器生成，因此钢琴、弦乐等只是近似，并非采样录音。']),
     ('img', 'pro-zh.png', '专业标签页：完整的合成器参数。'),
@@ -216,7 +216,7 @@ CONTENT = {
     ('note', '音が出ない場合: ブラウザはページを操作するまで音声を止めています。画面のどこかをクリックして(オレンジのバナーが案内します)、もう一度弾いてください。'),
   ]),
   ('5. 音色の選択と作り込み', [
-    ('p', '<b>インストゥルメント</b> パネルには2つのタブがあります。演奏中に聞こえる音が、そのまま録音されます。'),
+    ('p', '<b>インストゥルメント</b> パネルには3つのタブ（かんたん・プロ・サンプラー。サンプラーは専用の章で説明）があります。演奏中に聞こえる音が、そのまま録音されます。'),
     ('img', 'simple-ja.png', 'かんたんタブ: 楽器風の音色を選ぶ。'),
     ('ul', ['<b>かんたん</b> — 約55種類の出来合いの音色を、リファレンス / 鍵盤 / リード / ベース / パッド・弦 / 撥弦・打楽器的 / EDM / ドラム・ヒット / 効果音 のカテゴリーに収録。カードを押すと選択され、短い試聴音が鳴ります。「低音で弾く」と書かれたカード(キック、サブドロップなど)は C1〜C2 付近が最適です。', '3つのマクロスライダーで、どの音色も調整できます: <b>明るさ</b>、<b>長さ</b>、<b>空間</b>(リバーブ)。', '<b>現在の音色を保存</b> で、自分用の音色を <b>マイサウンド</b> に保存できます(このブラウザに保存され、全プロジェクトで共通)。', '<b>リファレンス</b> には、お預かりした音声や言葉の説明から作った音色が入ります。例: <b>ゴーストコーラス</b> — ゆっくり立ち上がる柔らかいコーラスで、わずかに震え(約3.4Hzのビブラートとトレモロ)、広いステレオと長いリバーブを持ちます。', '音色はシンセサイザーで生成しているため、ピアノや弦はサンプル録音ではなく近似です。']),
     ('img', 'pro-ja.png', 'プロタブ: シンセサイザーの全パラメーター。'),
@@ -316,6 +316,9 @@ td:first-child { font-weight:600; width:34%; }
 .note { background:#fff4ec; border-left:3px solid #ff7a45; padding:2.4mm 3.5mm; margin:2mm 0 4mm; font-size:9.8pt; }
 b { font-weight:700; }
 """
+
+import sys; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from manual_extra import patch; patch(CONTENT)
 
 def block(b):
     k = b[0]

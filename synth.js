@@ -47,8 +47,10 @@
     filterType: 'lowpass', cutoff: 4000, resonance: 1, keytrack: 0.5, fEnv: 0, fDecay: 0.3,
     attack: 0.005, decay: 0.3, sustain: 0.6, release: 0.25,
     pitchEnv: 0, pitchDecay: 0.08, vibRate: 5, vibDepth: 0, tremRate: 4, tremDepth: 0, bendRange: 2, spread: 0,
-    reverb: 0.15, gain: 0.6
+    reverb: 0.15, gain: 0.6,
+    sampleId: '', smpStart: 0, smpEnd: 0, smpRoot: 60, smpLoop: 0
   };
+  const samples = new Map(); // sampleId -> AudioBuffer (filled by sampler.js)
   const mk = (o) => Object.assign({}, BASE, o);
 
   const PRESETS = {
@@ -98,7 +100,7 @@
   }
 
   /* ---- master bus: reverb bus + master gain + compressor ---- */
-  function createBus(ctx) {
+  function createBus(ctx, opts) {
     const master = ctx.createGain(); master.gain.value = 0.85;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -10; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.2;
@@ -107,7 +109,13 @@
     const revIn = ctx.createGain(); revIn.gain.value = 1;
     const revOut = ctx.createGain(); revOut.gain.value = 0.9;
     revIn.connect(conv); conv.connect(revOut); revOut.connect(master);
-    return { ctx, master, comp, revIn };
+    const bus = { ctx, master, comp, revIn };
+    if (opts && opts.meter) {
+      const sp = ctx.createChannelSplitter(2), aL = ctx.createAnalyser(), aR = ctx.createAnalyser();
+      aL.fftSize = aR.fftSize = 1024; comp.connect(sp); sp.connect(aL, 0); sp.connect(aR, 1);
+      bus.meter = { aL, aR, bL: new Float32Array(1024), bR: new Float32Array(1024) };
+    }
+    return bus;
   }
 
   /* ---- layer channel: input -> vol -> master ; input -> send -> reverb ---- */
@@ -212,6 +220,19 @@
       n.connect(ng); ng.connect(filt);
       n.start(when, Math.random() * 1.5);
       sources.push(n); nodes.push(ng);
+    }
+
+    // sampler source
+    const smp = p.sampleId ? samples.get(p.sampleId) : null;
+    if (smp) {
+      const s = ctx.createBufferSource(); s.buffer = smp;
+      const st = Math.max(0, Math.min(smp.duration - 0.005, p.smpStart || 0));
+      let en = p.smpEnd > 0 ? Math.min(smp.duration, p.smpEnd) : smp.duration; if (en <= st + 0.005) en = smp.duration;
+      s.playbackRate.value = p.smpRoot >= 0 ? Math.pow(2, (note - p.smpRoot) / 12) : 1;
+      if (p.smpLoop) { s.loop = true; s.loopStart = st; s.loopEnd = en; }
+      const sg = ctx.createGain(); s.connect(sg); sg.connect(filt);
+      if (p.smpLoop) s.start(when, st); else s.start(when, st, en - st);
+      sources.push(s); nodes.push(sg); detuneTargets.push(s);
     }
 
     // pitch envelope (on detune)
@@ -331,7 +352,7 @@
   }
 
   window.Synth = {
-    PARAM_DEFS, GROUPS, BASE, PRESETS, PRESET_ORDER, midiToHz,
+    PARAM_DEFS, GROUPS, BASE, PRESETS, samples, PRESET_ORDER, midiToHz,
     createBus, createChannel, updateChannel, disposeChannel, setBend,
     startVoice, buildEvents, renderOffline, encodeWav
   };

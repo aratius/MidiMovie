@@ -12,17 +12,19 @@ Score a video with a MIDI keyboard — record layered takes in real time and exp
 | `index.html` | プロジェクト一覧 + 取扱説明書への導線 / Project list + manual links |
 | `editor.html?p=<id>` | エディタ本体 / The editor |
 | `manual/MidiMovie-manual-{en,zh,ja}.pdf` | 取扱説明書 (3言語) / User manual |
-| `tools/build_manual.py` | 説明書PDFの生成スクリプト (Playwright) |
+| `sw.js`, `manifest.webmanifest`, `icons/` | PWA (インストール / オフライン) |
+| `tools/` | 説明書PDFとスクリーンショットの生成スクリプト (Playwright) |
 
 ## 特長 / Features
 
-- 映像を読み込み、再生しながらMIDIキーボード（またはPCキーボード）で録音。テイクは採用/破棄、レイヤーで重ね録り
+- 映像を読み込み、再生しながらMIDIキーボード（またはPCキーボード・タッチ鍵盤）で録音。テイクは採用/破棄、レイヤーで重ね録り
 - 音は「映像の時間」で保存し、オフラインレンダリングで書き出すので、映像がカクついてもズレない
-- シンプル(プリセット56種・リファレンス音色含む) / プロ(生パラメータ)の2タブ
-- ノートエディタ(ピアノロール)で録音後に位置・長さ・音程を調整
-- WAV書き出し (ミックス / レイヤー別)
+- スロー再生（¾ ½ ¼）で録音、コマ送り、マーカー
+- シンプル(プリセット70種超・リファレンス音色含む) / プロ(生パラメータ) / サンプラー(音声ファイル・マイク・映像の音声)
+- ノートエディタ(ピアノロール): 位置・長さ・音程、コピー/ペースト/複製、移調、ベロシティレーン
+- 書き出し: WAV(ミックス / ステムZIP)、ラウドネス(LUFS)調整、MIDI(.mid) 書き出し・読み込み
+- プロジェクトはブラウザのIndexedDBに自動保存（映像含む）。サーバー・DB不要。映像・サンプル込みのZIPバックアップ/復元
 - EN / 中文 / 日本語 UI
-- プロジェクトはブラウザのIndexedDBに自動保存（映像含む）。サーバー・DB不要。JSONで書き出し/読み込みも可能（映像は含まれません）
 
 ## ローカルで動かす / Run locally
 

@@ -19,7 +19,8 @@
     octave: 0, transpose: 0, channel: 0, velFixed: false, typing: true,
     latencyMs: 0, recFrom: 'start', countIn: 3, monitor: true,
     recording: false, counting: false, rec: null, countToken: 0,
-    videoName: '', videoUrl: null
+    videoName: '', videoUrl: null,
+    markers: [], rate: 1
   };
 
   /* ================= audio ================= */
@@ -28,7 +29,7 @@
     if (ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
-    bus = Synth.createBus(ctx);
+    bus = Synth.createBus(ctx, { meter: true });
     liveCh = Synth.createChannel(bus, S.inst.params, 1);
     ctx.onstatechange = updateAudioBanner;
     updateAudioBanner();
@@ -41,12 +42,12 @@
   /* ================= transport (video or virtual clock) ================= */
   const video = $('video');
   const T = {
-    hasVideo: false, vPlaying: false, vOffset: 0, vBase: 0, vDuration: BLANK_DURATION, rate: 1,
+    hasVideo: false, vPlaying: false, vOffset: 0, vBase: 0, vDuration: BLANK_DURATION, rate: 1, fps: 30,
     onEnded: null,
     get duration() { return this.hasVideo ? (isFinite(video.duration) ? video.duration : 0) : this.vDuration; },
     get time() {
       if (this.hasVideo) return video.currentTime;
-      return this.vPlaying ? Math.min(this.vDuration, this.vOffset + (performance.now() - this.vBase) / 1000) : this.vOffset;
+      return this.vPlaying ? Math.min(this.vDuration, this.vOffset + (performance.now() - this.vBase) / 1000 * this.rate) : this.vOffset;
     },
     get playing() { return this.hasVideo ? (!video.paused && !video.ended) : this.vPlaying; },
     play() {
@@ -57,13 +58,19 @@
       if (this.hasVideo) video.pause();
       else { if (this.vPlaying) this.vOffset = this.time; this.vPlaying = false; killAllVoices(); onPlayState(); }
     },
+    setRate(r) {
+      if (!this.hasVideo && this.vPlaying) { this.vOffset = this.time; this.vBase = performance.now(); }
+      this.rate = r; video.defaultPlaybackRate = r; video.playbackRate = r;
+      if (this.playing) resetScheduler();
+      updateSpeedUI();
+    },
     seek(s) {
       s = clamp(s, 0, this.duration || 0);
       if (this.hasVideo) video.currentTime = s;
       else { this.vOffset = s; this.vBase = performance.now(); resetScheduler(); }
     }
   };
-  video.addEventListener('play', () => { resetScheduler(); onPlayState(); });
+  video.addEventListener('play', () => { resetScheduler(); onPlayState(); watchFps(); });
   video.addEventListener('pause', () => { killAllVoices(); onPlayState(); });
   video.addEventListener('seeking', () => resetScheduler());
   video.addEventListener('ended', () => { killAllVoices(); onPlayState(); if (T.onEnded) T.onEnded(); });
@@ -138,7 +145,7 @@
   function mediaNow(ts) {
     let tt = T.time;
     if (T.playing && ts) { const lag = (performance.now() - ts) / 1000; if (lag > 0 && lag < 0.5) tt -= lag * (T.rate || 1); }
-    return Math.max(0, tt - S.latencyMs / 1000);
+    return Math.max(0, tt - (S.latencyMs / 1000) * (T.rate || 1));
   }
   function playNote(key, note, vel, ts) {
     ensureAudio();
@@ -255,7 +262,7 @@
     if (S.videoUrl) URL.revokeObjectURL(S.videoUrl);
     S.videoUrl = URL.createObjectURL(file); S.videoName = file.name.replace(/\.[^.]+$/, '');
     video.src = S.videoUrl; T.hasVideo = true; video.load();
-    video.volume = parseFloat($('videoVol').value); video.muted = vMuted;
+    video.volume = parseFloat($('videoVol').value); video.muted = vMuted; video.defaultPlaybackRate = T.rate; video.playbackRate = T.rate; fpsBuf = []; T.fps = 30;
     if (opts.seek) video.addEventListener('loadedmetadata', () => { try { video.currentTime = Math.min(opts.seek, video.duration || opts.seek); } catch (e) { /* ignore */ } }, { once: true });
     if (!opts.fromStore && typeof persistVideo === 'function') persistVideo(file);
     updateStageUI(); resetScheduler();
@@ -302,6 +309,7 @@
     $('btnPlay').disabled = rec; $('btnStart').disabled = rec; $('btnStop').disabled = false;
     $('recBadge').hidden = !S.recording;
     ['recFrom', 'countIn', 'latency'].forEach(id => { $(id).disabled = rec; });
+    updateSpeedUI();
   }
   $('btnPlay').addEventListener('click', togglePlay);
   function togglePlay() {
@@ -327,6 +335,76 @@
     sel.value = S.countIn;
   }
 
+  /* ---- speed, frame step, markers, meter ---- */
+  function updateSpeedUI() {
+    const lock = S.recording || S.counting;
+    document.querySelectorAll('#speedSeg button').forEach(b => { b.setAttribute('aria-pressed', parseFloat(b.dataset.rate) === T.rate); b.disabled = lock; });
+  }
+  document.querySelectorAll('#speedSeg button').forEach(b => b.addEventListener('click', () => { T.setRate(parseFloat(b.dataset.rate)); S.rate = T.rate; }));
+  const snapFps = (f) => { for (const c of [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60]) if (Math.abs(f - c) / c < 0.03) return c; return Math.round(f * 100) / 100; };
+  let fpsBuf = [], fpsPrev = null, fpsWatching = false;
+  function watchFps() {
+    if (fpsWatching || !video.requestVideoFrameCallback) return; fpsWatching = true; fpsPrev = null;
+    const cb = (now, md) => {
+      if (fpsPrev && md.presentedFrames === fpsPrev.pf + 1) {
+        const d = md.mediaTime - fpsPrev.mt;
+        if (d > 0.004 && d < 0.2) { fpsBuf.push(d); if (fpsBuf.length > 40) fpsBuf.shift(); if (fpsBuf.length >= 8) { const a = fpsBuf.slice().sort((x, y) => x - y); T.fps = snapFps(1 / a[a.length >> 1]); } }
+      }
+      fpsPrev = { pf: md.presentedFrames, mt: md.mediaTime };
+      if (!video.paused && !video.ended) video.requestVideoFrameCallback(cb); else fpsWatching = false;
+    };
+    video.requestVideoFrameCallback(cb);
+  }
+  function stepFrames(n) {
+    if (S.recording || S.counting) return;
+    if (T.playing) T.pause();
+    const fr = 1 / T.fps, k = Math.floor(T.time / fr + 1e-4);
+    T.seek(Math.max(0, (k + n + 0.5) * fr));
+  }
+  $('btnFrameBack').addEventListener('click', (e) => stepFrames(e.shiftKey ? -10 : -1));
+  $('btnFrameFwd').addEventListener('click', (e) => stepFrames(e.shiftKey ? 10 : 1));
+
+  const markTol = () => Math.max(0.5 / T.fps, 0.02);
+  function toggleMarker() {
+    const tt = T.time, i = S.markers.findIndex(m => Math.abs(m.t - tt) <= markTol());
+    if (i >= 0) S.markers.splice(i, 1); else { S.markers.push({ t: tt, name: '' }); S.markers.sort((a, b) => a.t - b.t); }
+  }
+  function jumpMarker(dir) {
+    if (S.recording || S.counting) return;
+    const tt = T.time;
+    const m = dir > 0 ? S.markers.find(x => x.t > tt + 0.01) : S.markers.slice().reverse().find(x => x.t < tt - 0.01);
+    if (m) T.seek(m.t);
+  }
+  $('btnMarker').addEventListener('click', toggleMarker);
+
+  /* master meter */
+  const mc = $('meter'), mg = mc.getContext('2d'); let mvL = 0, mvR = 0, mHold = 0, mHoldAt = 0, mMax = 0;
+  const dbOf = (x) => x > 0.00001 ? 20 * Math.log10(x) : -Infinity;
+  function drawMeter() {
+    const dpr = window.devicePixelRatio || 1, W = 120, H = 22;
+    if (mc.width !== W * dpr) { mc.width = W * dpr; mc.height = H * dpr; mc.style.width = W + 'px'; mc.style.height = H + 'px'; }
+    let pl = 0, pr = 0; const m = bus && bus.meter;
+    if (m) {
+      m.aL.getFloatTimeDomainData(m.bL); m.aR.getFloatTimeDomainData(m.bR);
+      for (let i = 0; i < m.bL.length; i++) { const a = Math.abs(m.bL[i]), b = Math.abs(m.bR[i]); if (a > pl) pl = a; if (b > pr) pr = b; }
+    }
+    mvL = Math.max(pl, mvL * 0.88); mvR = Math.max(pr, mvR * 0.88);
+    const pk = Math.max(pl, pr), now = performance.now();
+    if (pk >= mHold || now - mHoldAt > 1500) { mHold = Math.max(pk, now - mHoldAt > 1500 ? pk : mHold); mHoldAt = now; }
+    mMax = Math.max(mMax, pk);
+    mg.setTransform(dpr, 0, 0, dpr, 0, 0); mg.clearRect(0, 0, W, H);
+    const pos = (v) => clamp((dbOf(v) + 60) / 60, 0, 1) * W;
+    [[mvL, 3], [mvR, 12]].forEach(([v, y]) => {
+      mg.fillStyle = '#1b1e25'; mg.fillRect(0, y, W, 7);
+      const w = pos(v), g = mg.createLinearGradient(0, 0, W, 0); g.addColorStop(0, '#41d392'); g.addColorStop(0.72, '#41d392'); g.addColorStop(0.88, '#ffd166'); g.addColorStop(1, '#ff3b4a');
+      mg.fillStyle = g; mg.fillRect(0, y, w, 7);
+    });
+    const hx = pos(mHold); if (hx > 2) { mg.fillStyle = '#fff'; mg.fillRect(Math.min(W - 2, hx), 1, 2, 20); }
+    const dbv = dbOf(mMax); const txt = $('meterText'), s = isFinite(dbv) ? dbv.toFixed(1) : '−∞';
+    if (txt.textContent !== s) { txt.textContent = s; txt.classList.toggle('clip', dbv > -0.3); }
+  }
+  mc.addEventListener('click', () => { mMax = 0; mHold = 0; });
+
   /* take card */
   $('takePreview').addEventListener('click', previewTake);
   $('takeKeep').addEventListener('click', keepTake);
@@ -341,12 +419,33 @@
 
   /* ================= layers UI ================= */
   function layerLabel(l) { return l.name || (t('layer') + ' ' + l.num); }
-  function soundLabel(l) { return (l.presetId && PresetLib.name(l.presetId, I18N.lang)) || t('pr.custom'); }
+  function soundName(id) { if (!id) return null; if (id.indexOf('smp:') === 0) return Sampler.name(id.slice(4)) || null; return PresetLib.name(id, I18N.lang); }
+  function soundLabel(l) { return soundName(l.presetId) || t('pr.custom'); }
   function renderLayers() {
     const list = $('layerList'); list.innerHTML = '';
     if (!S.layers.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = t('layers.empty'); list.appendChild(d); }
     S.layers.forEach(l => list.appendChild(layerEl(l)));
     $('expMix').disabled = !S.layers.length;
+  }
+  let menuEl = null;
+  const onDocDown = (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); };
+  function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; document.removeEventListener('pointerdown', onDocDown, true); } }
+  function popMenu(anchor, items) {
+    closeMenu(); const m = el('div', 'popmenu'); m.setAttribute('role', 'menu');
+    items.forEach(it => {
+      if (it.sep) { m.appendChild(el('div', 'sep')); return; }
+      const b = el('button', it.danger ? 'danger' : '', it.label); b.type = 'button'; b.setAttribute('role', 'menuitem'); if (it.tip) b.title = it.tip;
+      b.addEventListener('click', () => { closeMenu(); it.fn(); }); m.appendChild(b);
+    });
+    document.body.appendChild(m);
+    const r = anchor.getBoundingClientRect();
+    m.style.left = Math.max(8, r.right + window.scrollX - m.offsetWidth) + 'px'; m.style.top = (r.bottom + window.scrollY + 4) + 'px';
+    menuEl = m; document.addEventListener('pointerdown', onDocDown, true);
+  }
+  function duplicateLayer(l) {
+    const c = JSON.parse(JSON.stringify(layerData(l))); c.num = S.nextNum++; c.id = 'l' + c.num + '_' + Date.now();
+    c.name = layerLabel(l) + ' ' + t('layer.copy'); c.color = COLORS[(c.num - 1) % COLORS.length];
+    S.layers.push(buildLayer(c, S.layers.length)); refreshAllChannels(); renderLayers();
   }
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function layerEl(l) {
@@ -373,14 +472,21 @@
     nu.addEventListener('change', () => { l.offsetMs = clamp(parseFloat(nu.value) || 0, -2000, 2000); nu.value = l.offsetMs; invalidate(l); if (T.playing) resetScheduler(); });
     ln.append(nu);
     const acts = el('div', 'l-actions');
-    const use = el('button', 'btn small', t('layer.useSound')); use.title = t('layer.useSoundTip');
-    use.addEventListener('click', () => { setInstrument(Object.assign({}, l.params), l.presetId); });
-    const apply = el('button', 'btn small', t('layer.applySound')); apply.title = t('layer.applySoundTip');
-    apply.addEventListener('click', () => { l.params = Object.assign({}, S.inst.params); l.presetId = S.inst.presetId; refreshChannel(l); if (T.playing) resetScheduler(); renderLayers(); });
-    const ex = el('button', 'btn small', t('layer.export')); ex.title = t('layer.exportTip');
-    ex.addEventListener('click', () => exportLayers([l], layerLabel(l), ex));
     const ed = el('button', 'btn small', t('layer.edit')); ed.addEventListener('click', () => { setEditTarget(l.id); $('rollCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-    acts.prepend(ed); acts.append(use, apply, ex);
+    const more = el('button', 'btn small ghost', '⋯'); more.title = t('layer.more'); more.setAttribute('aria-label', t('layer.more')); more.setAttribute('aria-haspopup', 'menu');
+    more.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      popMenu(more, [
+        { label: t('layer.useSound'), tip: t('layer.useSoundTip'), fn: () => setInstrument(Object.assign({}, l.params), l.presetId) },
+        { label: t('layer.applySound'), tip: t('layer.applySoundTip'), fn: () => { l.params = Object.assign({}, S.inst.params); l.presetId = S.inst.presetId; refreshChannel(l); if (T.playing) resetScheduler(); renderLayers(); } },
+        { sep: true },
+        { label: t('layer.exportWav'), fn: () => window.UI && UI.exportWav([l], layerLabel(l)) },
+        { label: t('layer.exportMidi'), fn: () => window.UI && UI.exportMidi([l], layerLabel(l)) },
+        { sep: true },
+        { label: t('layer.duplicate'), fn: () => duplicateLayer(l) }
+      ]);
+    });
+    acts.append(ed, more);
     body.append(lv, ln, acts);
     root.append(head, body);
     return root;
@@ -433,6 +539,14 @@
       const span = Math.max(12, hi - lo), py = y0 + LANE - 5 - ((n - lo) / span) * (LANE - 10);
       g2.globalAlpha = alpha; g2.fillStyle = color; g2.fillRect(x(tt), Math.round(py) - 1, Math.max(2, x(d)), 3); g2.globalAlpha = 1;
     }
+    // markers
+    S.markers.forEach((m, i) => {
+      const mx = Math.round(x(m.t)) + 0.5;
+      g2.strokeStyle = 'rgba(76,201,240,.5)'; g2.setLineDash([3, 3]); g2.beginPath(); g2.moveTo(mx, RULER); g2.lineTo(mx, H); g2.stroke(); g2.setLineDash([]);
+      g2.fillStyle = '#4cc9f0'; g2.beginPath(); g2.moveTo(mx, 3); g2.lineTo(mx + 8, 3); g2.lineTo(mx + 5, 7); g2.lineTo(mx + 8, 11); g2.lineTo(mx, 11); g2.closePath(); g2.fill();
+      g2.fillRect(mx - 0.5, 3, 1.5, RULER - 3);
+      g2.font = '600 9px system-ui, sans-serif'; g2.fillStyle = '#9fe3f7'; g2.fillText(m.name || String(i + 1), mx + 11, 8);
+    });
     // playhead
     const px = Math.round(x(T.time)) + 0.5;
     g2.strokeStyle = '#ffffff'; g2.lineWidth = 1.5; g2.beginPath(); g2.moveTo(px, 0); g2.lineTo(px, H); g2.stroke(); g2.lineWidth = 1;
@@ -440,12 +554,28 @@
   }
   let scrubbing = false;
   function scrubTo(e) { const r = cv.getBoundingClientRect(); T.seek(((e.clientX - r.left) / r.width) * (T.duration || 0)); }
-  cv.addEventListener('pointerdown', (e) => { if (S.recording || S.counting) return; scrubbing = true; cv.setPointerCapture(e.pointerId); scrubTo(e); });
+  function markerAt(e) {
+    const r = cv.getBoundingClientRect(), dur = T.duration || BLANK_DURATION;
+    if (e.clientY - r.top > RULER) return -1;
+    let best = -1, bd = 9;
+    S.markers.forEach((m, i) => { const d = Math.abs(((m.t / dur) * r.width) - (e.clientX - r.left) + 4); if (d < bd) { bd = d; best = i; } });
+    return best;
+  }
+  cv.addEventListener('pointerdown', (e) => {
+    if (S.recording || S.counting) return;
+    const mi = markerAt(e);
+    if (mi >= 0) { if (e.shiftKey) S.markers.splice(mi, 1); else T.seek(S.markers[mi].t); return; }
+    scrubbing = true; cv.setPointerCapture(e.pointerId); scrubTo(e);
+  });
+  cv.addEventListener('dblclick', (e) => {
+    const mi = markerAt(e); if (mi < 0) return;
+    const n = prompt(t('mk.rename'), S.markers[mi].name || ''); if (n != null) S.markers[mi].name = n.trim().slice(0, 24);
+  });
   cv.addEventListener('pointermove', (e) => { if (scrubbing) scrubTo(e); });
   ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, () => { scrubbing = false; }));
 
   function frame() {
-    drawTimeline(); if (typeof drawRoll === 'function') drawRoll();
+    drawTimeline(); if (typeof drawRoll === 'function') drawRoll(); drawVel(); drawMeter();
     $('timeDisplay').textContent = fmtTime(T.time) + ' / ' + fmtTime(T.duration);
     if (!T.hasVideo && T.vPlaying && T.time >= T.vDuration) { T.vOffset = T.vDuration; T.vPlaying = false; killAllVoices(); onPlayState(); if (T.onEnded) T.onEnded(); }
     requestAnimationFrame(frame);
@@ -458,9 +588,12 @@
   }, 500);
 
   /* ================= keyboard (on-screen) ================= */
-  const piano = $('piano'), keyEls = {};
-  (function buildPiano() {
-    const LO = 36, HI = 96, isBlack = (n) => [1, 3, 6, 8, 10].includes(n % 12);
+  const piano = $('piano'), keyEls = {}, PK = { base: 48 };
+  const isNarrow = () => window.innerWidth < 720;
+  let lastNarrow = null;
+  function buildPiano() {
+    piano.innerHTML = ''; Object.keys(keyEls).forEach(k => { delete keyEls[k]; });
+    const LO = isNarrow() ? PK.base : 36, HI = isNarrow() ? PK.base + 36 : 96, isBlack = (n) => [1, 3, 6, 8, 10].includes(n % 12);
     let whites = 0; for (let n = LO; n <= HI; n++) if (!isBlack(n)) whites++;
     const ww = 100 / whites; let wi = 0;
     for (let n = LO; n <= HI; n++) {
@@ -469,15 +602,28 @@
       else { k.style.left = (wi * ww) + '%'; k.style.width = ww + '%'; wi++; if (n % 12 === 0) k.append(el('span', 'lbl', 'C' + (Math.floor(n / 12) - 1))); }
       piano.appendChild(k); keyEls[n] = k;
     }
-  })();
-  let pointerNotes = new Map();
+    lastNarrow = isNarrow(); document.querySelector('.piano-wrap').classList.toggle('narrow', lastNarrow);
+    refreshKeys(); updateKeyLabels();
+  }
+  window.addEventListener('resize', () => { if (isNarrow() !== lastNarrow) buildPiano(); });
+  $('pianoLeft').addEventListener('click', () => { PK.base = clamp(PK.base - 12, 24, 84); buildPiano(); });
+  $('pianoRight').addEventListener('click', () => { PK.base = clamp(PK.base + 12, 24, 84); buildPiano(); });
+  const pKeys = new Map(); // pointerId -> { key, note }  (multi-touch + glissando)
+  const keyAt = (x, y) => { const e = document.elementFromPoint(x, y), k = e && e.closest && e.closest('.key'); return k && piano.contains(k) ? k : null; };
+  const velFrom = (k, y) => { const r = k.getBoundingClientRect(); return clamp(Math.round(45 + 82 * ((y - r.top) / Math.max(1, r.height))), 30, 127); };
   piano.addEventListener('pointerdown', (e) => {
-    const k = e.target.closest('.key'); if (!k) return;
-    piano.setPointerCapture(e.pointerId);
-    const n = +k.dataset.note; const key = 'ui:' + e.pointerId;
-    pointerNotes.set(e.pointerId, key); playNote(key, n, 100, e.timeStamp);
+    const k = keyAt(e.clientX, e.clientY); if (!k) return;
+    e.preventDefault(); try { piano.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    const n = +k.dataset.note, key = 'ui:' + e.pointerId + ':' + n;
+    pKeys.set(e.pointerId, { key, note: n }); playNote(key, n, velFrom(k, e.clientY), e.timeStamp);
   });
-  const upPiano = (e) => { const key = pointerNotes.get(e.pointerId); if (key) { pointerNotes.delete(e.pointerId); releaseNote(key, e.timeStamp); } };
+  piano.addEventListener('pointermove', (e) => {
+    const cur = pKeys.get(e.pointerId); if (!cur) return;
+    const k = keyAt(e.clientX, e.clientY); if (!k) return; const n = +k.dataset.note; if (n === cur.note) return;
+    releaseNote(cur.key, e.timeStamp); const key = 'ui:' + e.pointerId + ':' + n;
+    pKeys.set(e.pointerId, { key, note: n }); playNote(key, n, velFrom(k, e.clientY), e.timeStamp);
+  });
+  const upPiano = (e) => { const cur = pKeys.get(e.pointerId); if (cur) { pKeys.delete(e.pointerId); releaseNote(cur.key, e.timeStamp); } };
   piano.addEventListener('pointerup', upPiano); piano.addEventListener('pointercancel', upPiano);
   function lit(note, d) { litCount[note] = Math.max(0, litCount[note] + d); const k = keyEls[note]; if (k) k.classList.toggle('on', litCount[note] > 0); }
   function refreshKeys() { Object.keys(keyEls).forEach(n => keyEls[n].classList.toggle('on', litCount[n] > 0)); }
@@ -497,10 +643,16 @@
     Object.keys(KEYMAP).forEach(k => { const n = transform(60 + KEYMAP[k]), kel = keyEls[n]; if (kel) kel.appendChild(el('span', 'klet', k.toUpperCase())); });
   }
   window.addEventListener('keydown', (e) => {
-    if (isTextTarget(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextTarget(e) || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('dialog[open]')) return;
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) togglePlay(); return; }
-    if (e.key === 'Escape') { stopAll(); return; }
+    if (e.key === 'Escape') { closeMenu(); stopAll(); return; }
     if (e.key === 'Home') { e.preventDefault(); if (!(S.recording || S.counting)) T.seek(0); return; }
+    if (e.key === ',' || e.key === '<') { e.preventDefault(); stepFrames(e.shiftKey ? -10 : -1); return; }
+    if (e.key === '.' || e.key === '>') { e.preventDefault(); stepFrames(e.shiftKey ? 10 : 1); return; }
+    if (e.key === '[') { jumpMarker(-1); return; }
+    if (e.key === ']') { jumpMarker(1); return; }
+    if (e.key.toLowerCase() === 'm' && !e.repeat) { toggleMarker(); return; }
+    if (e.key === '?') { if (window.UI) UI.open('dlgKeys'); return; }
     if (!S.typing) return;
     const k = e.key.toLowerCase();
     if (k === 'z') { S.octave = clamp(S.octave - 1, -4, 4); updateOct(); return; }
@@ -659,7 +811,7 @@
       else { pe.input.value = toPos(def, v); pe.val.textContent = fmtVal(def, v); }
     });
     $('presetSel').value = S.inst.presetId in presetOptionIds() ? S.inst.presetId : 'custom';
-    $('curSound').textContent = (PresetLib.name(S.inst.presetId, I18N.lang)) || t('pr.custom');
+    $('curSound').textContent = soundName(S.inst.presetId) || t('pr.custom');
     document.querySelectorAll('.pcard').forEach(c => c.setAttribute('aria-pressed', c.dataset.id === S.inst.presetId));
   }
   function presetOptionIds() { const o = {}; PresetLib.list.concat(PresetLib.mine()).forEach(p => { o[p.id] = 1; }); return o; }
@@ -734,8 +886,9 @@
   });
   function setTab(tab) {
     S.tab = tab; try { localStorage.setItem('midimovie.tab', tab); } catch (e) { /* ignore */ }
-    $('tabSimple').hidden = tab !== 'simple'; $('tabPro').hidden = tab !== 'pro';
-    $('tabBtnSimple').setAttribute('aria-selected', tab === 'simple'); $('tabBtnPro').setAttribute('aria-selected', tab === 'pro');
+    $('tabSimple').hidden = tab !== 'simple'; $('tabPro').hidden = tab !== 'pro'; $('tabSampler').hidden = tab !== 'sampler';
+    $('tabBtnSimple').setAttribute('aria-selected', tab === 'simple'); $('tabBtnPro').setAttribute('aria-selected', tab === 'pro'); $('tabBtnSampler').setAttribute('aria-selected', tab === 'sampler');
+    if (tab === 'sampler' && window.UI && UI.onSamplerShown) UI.onSamplerShown();
   }
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -771,29 +924,23 @@
   function toast(msg) { const e = $('toast'); e.textContent = msg; e.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { e.hidden = true; }, 3200); }
   function safeName(s) { return (s || 'midimovie').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'midimovie'; }
   function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000); }
-  async function exportLayers(layers, label, btn) {
-    layers = layers.filter(l => l.notes.length);
-    if (!layers.length) { toast(t('exp.nothing')); return; }
-    const sr = parseInt($('expRate').value, 10);
+  /* offline render of layers -> AudioBuffer (null if nothing to render) */
+  async function renderAudio(layers, sr) {
+    layers = layers.filter(l => l.notes.length); if (!layers.length) return null;
+    await Sampler.ensureAll(Backup.sampleIds({ layers }));
     let end = 0;
     layers.forEach(l => { const off = (l.offsetMs || 0) / 1000; l.notes.forEach(n => { end = Math.max(end, n.t + n.d + off + l.params.release * 2 + (l.params.reverb > 0 ? 2.4 : 0.1)); }); });
-    const length = Math.max(T.hasVideo ? T.duration : 0, end);
-    const prev = btn ? btn.textContent : ''; if (btn) { btn.disabled = true; btn.textContent = t('exp.rendering'); }
-    toast(t('exp.rendering'));
-    try {
-      const buf = await Synth.renderOffline(layers, { sampleRate: sr, length });
-      const blob = Synth.encodeWav(buf, $('expNorm').checked);
-      const name = safeName(S.videoName || 'midimovie') + '-' + safeName(label) + '.wav';
-      download(blob, name); toast(t('exp.done', { name }));
-    } catch (err) { console.error(err); toast(String(err && err.message || err)); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = prev; } }
+    return Synth.renderOffline(layers, { sampleRate: sr || 48000, length: Math.max(T.hasVideo ? T.duration : 0, end) });
   }
-  $('expMix').addEventListener('click', () => {
-    const audible = S.layers.filter(isAudible);
-    exportLayers(audible, 'mix', $('expMix'));
-  });
+  function importedLayers(list) {
+    list.forEach(x => {
+      const num = S.nextNum++;
+      S.layers.push(buildLayer({ id: 'l' + num + '_' + Date.now() + Math.random().toString(36).slice(2, 4), num, name: x.name || null, color: COLORS[(num - 1) % COLORS.length], notes: x.notes, bends: x.bends || [], params: S.inst.params, presetId: S.inst.presetId }, S.layers.length));
+    });
+    refreshAllChannels(); resetScheduler(); updateUI();
+  }
   /* ================= note editor (piano roll) ================= */
-  const E = { id: null, sel: new Set(), pps: 80, viewStart: 0, lo: 48, hi: 84, snap: 0.01, follow: true, hist: [], redo: [], mode: null, drag: null, pointer: null };
+  const E = { clip: null, id: null, sel: new Set(), pps: 80, viewStart: 0, lo: 48, hi: 84, snap: 0.01, follow: true, hist: [], redo: [], mode: null, drag: null, pointer: null };
   const rc = $('roll'), rg = rc.getContext('2d');
   const GUT = 46, RH = 22;
   const BLACK = [1, 3, 6, 8, 10];
@@ -854,7 +1001,42 @@
     renderLayers(); updateTakeInfoSafe();
   }
   function updateTakeInfoSafe() { if (S.pending) renderTake(); }
-  function snapT(v) { return E.snap > 0 ? Math.round(v / E.snap) * E.snap : v; }
+  function snapT(v) {
+    if (E.snap <= 0) return v;
+    const tol = 6 / E.pps; let best = null, bd = tol;
+    S.markers.forEach(m => { const d = Math.abs(m.t - v); if (d < bd) { bd = d; best = m.t; } });
+    return best != null ? best : Math.round(v / E.snap) * E.snap;
+  }
+  /* ---- clipboard / transpose ---- */
+  function copySel() {
+    const sel = Array.from(E.sel); if (!sel.length) return;
+    const base = Math.min.apply(null, sel.map(n => n.t));
+    E.clip = { notes: sel.map(n => ({ dt: n.t - base, d: n.d, n: n.n, v: n.v })) };
+    toast(t('roll.copied', { n: sel.length })); renderNoteForm();
+  }
+  function pasteClip() {
+    const l = editLayer(); if (!l || !E.clip || !E.clip.notes.length) return;
+    pushHist(); const base = Math.max(0, T.time - offOf(l));
+    const added = E.clip.notes.map(c => ({ t: base + c.dt, d: c.d, n: c.n, v: c.v }));
+    added.forEach(n => l.notes.push(n)); E.sel = new Set(added); afterEdit(); renderNoteForm();
+  }
+  function dupSel() {
+    const l = editLayer(), sel = Array.from(E.sel); if (!l || !sel.length) return;
+    const t0 = Math.min.apply(null, sel.map(n => n.t)), t1 = Math.max.apply(null, sel.map(n => n.t + n.d));
+    pushHist(); const added = sel.map(n => ({ t: n.t + (t1 - t0), d: n.d, n: n.n, v: n.v }));
+    added.forEach(n => l.notes.push(n)); E.sel = new Set(added); afterEdit(); renderNoteForm();
+  }
+  function transposeSel(st) {
+    const l = editLayer(); if (!l || !E.sel.size) return;
+    pushHist(); E.sel.forEach(n => { n.n = clamp(n.n + st, 0, 127); });
+    let lo = 127, hi = 0; E.sel.forEach(n => { lo = Math.min(lo, n.n); hi = Math.max(hi, n.n); });
+    if (hi > E.hi - 1) E.hi = Math.min(127, hi + 3); if (lo < E.lo + 1) E.lo = Math.max(0, lo - 3);
+    audNote(l, Array.from(E.sel)[0].n, Array.from(E.sel)[0].v); afterEdit(); renderNoteForm();
+  }
+  $('selCopy').addEventListener('click', copySel);
+  $('selPaste').addEventListener('click', pasteClip);
+  $('selDup').addEventListener('click', dupSel);
+  document.querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', () => transposeSel(parseInt(b.dataset.st, 10))));
 
   function hit(px, py) {
     const l = editLayer(); if (!l) return null; const g = geom(), off = offOf(l);
@@ -952,10 +1134,23 @@
   $('rollDel').addEventListener('click', deleteSel);
 
   window.addEventListener('keydown', (e) => {
-    if (isTextTarget(e)) return;
-    const l = editLayer(); if (!l) return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); restore(e.shiftKey ? E.redo : E.hist, e.shiftKey ? E.hist : E.redo); return; }
-    if (e.ctrlKey || e.metaKey || e.altKey || !E.sel.size) return;
+    if (isTextTarget(e) || document.querySelector('dialog[open]')) return;
+    const l = editLayer(), mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (mod) {
+      if (!l) return;
+      if (k === 'z') { e.preventDefault(); restore(e.shiftKey ? E.redo : E.hist, e.shiftKey ? E.hist : E.redo); }
+      else if (k === 'c') { e.preventDefault(); copySel(); }
+      else if (k === 'v') { e.preventDefault(); pasteClip(); }
+      else if (k === 'd') { e.preventDefault(); dupSel(); }
+      else if (k === 'a') { e.preventDefault(); E.sel = new Set(l.notes); renderNoteForm(); }
+      return;
+    }
+    if (e.altKey) return;
+    if (!l || !E.sel.size) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stepFrames(e.shiftKey ? -10 : -1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); stepFrames(e.shiftKey ? 10 : 1); }
+      return;
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); return; }
     const step = e.shiftKey ? 0.1 : 0.01;
     let dt = 0, dn = 0;
@@ -968,13 +1163,68 @@
     afterEdit(); renderNoteForm();
   });
 
+  /* ---- velocity lane ---- */
+  const vc = $('velLane'), vg = vc.getContext('2d'); let VD = null;
+  const VH = 72;
+  const yToVel = (y, H) => clamp(Math.round((1 - (y - 5) / (H - 10)) * 127), 1, 127);
+  function drawVel() {
+    const show = $('rollVel').checked; $('velWrap').hidden = !show; if (!show) return;
+    const dpr = window.devicePixelRatio || 1, W = vc.clientWidth || 800, H = VH;
+    if (vc.width !== Math.round(W * dpr) || vc.height !== Math.round(H * dpr)) { vc.width = Math.round(W * dpr); vc.height = Math.round(H * dpr); }
+    vg.setTransform(dpr, 0, 0, dpr, 0, 0); vg.clearRect(0, 0, W, H);
+    vg.fillStyle = '#0e1014'; vg.fillRect(0, 0, W, H);
+    vg.strokeStyle = 'rgba(255,255,255,.05)'; [0.25, 0.5, 0.75].forEach(f => { const y = Math.round(5 + (H - 10) * f) + 0.5; vg.beginPath(); vg.moveTo(GUT, y); vg.lineTo(W, y); vg.stroke(); });
+    const l = editLayer();
+    if (l) {
+      const off = offOf(l), col = l === S.pending ? '#ffb347' : l.color;
+      vg.save(); vg.beginPath(); vg.rect(GUT, 0, W - GUT, H); vg.clip();
+      l.notes.forEach(n => {
+        const x = Math.round(xOf(n.t + off)) + 0.5; if (x < GUT - 4 || x > W + 4) return;
+        const y = 5 + (H - 10) * (1 - n.v / 127), sel = E.sel.has(n);
+        vg.strokeStyle = col; vg.globalAlpha = sel ? 1 : 0.7; vg.lineWidth = 2; vg.beginPath(); vg.moveTo(x, H - 3); vg.lineTo(x, y); vg.stroke();
+        vg.globalAlpha = 1; vg.fillStyle = sel ? '#fff' : col; vg.beginPath(); vg.arc(x, y, sel ? 4 : 3.2, 0, 6.3); vg.fill();
+      });
+      const px = Math.round(xOf(T.time)) + 0.5; vg.strokeStyle = 'rgba(255,255,255,.7)'; vg.lineWidth = 1; vg.beginPath(); vg.moveTo(px, 0); vg.lineTo(px, H); vg.stroke();
+      vg.restore();
+    }
+    vg.fillStyle = '#0b0c0f'; vg.fillRect(0, 0, GUT, H); vg.fillStyle = '#6b7080'; vg.font = '10px ui-monospace, Menlo, monospace'; vg.textBaseline = 'middle'; vg.fillText(t('roll.vel'), 6, H / 2);
+  }
+  function velAt(e) { const r = vc.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  function velHit(x) {
+    const l = editLayer(); if (!l) return null; const off = offOf(l); let best = null, bd = 7;
+    l.notes.forEach(n => { const d = Math.abs(xOf(n.t + off) - x); if (d <= bd) { bd = d; best = n; } });
+    return best;
+  }
+  vc.addEventListener('pointerdown', (e) => {
+    const l = editLayer(); if (!l) return; vc.setPointerCapture(e.pointerId);
+    const [x, y] = velAt(e); const h = velHit(x); pushHist();
+    if (h) {
+      if (!E.sel.has(h)) { if (!e.shiftKey) E.sel.clear(); E.sel.add(h); }
+      VD = { mode: 'bar', prim: h, orig: new Map(Array.from(E.sel).map(n => [n, n.v])), changed: false };
+    } else VD = { mode: 'paint', lastX: x, changed: false };
+    velMove(x, y); renderNoteForm();
+  });
+  function velMove(x, y) {
+    const l = editLayer(); if (!l || !VD) return; const off = offOf(l);
+    const v = yToVel(y, VH);
+    if (VD.mode === 'bar') { const dv = v - VD.orig.get(VD.prim); VD.orig.forEach((o, n) => { n.v = clamp(o + dv, 1, 127); }); VD.changed = true; }
+    else { const a = Math.min(VD.lastX, x) - 4, b = Math.max(VD.lastX, x) + 4; l.notes.forEach(n => { const nx = xOf(n.t + off); if (nx >= a && nx <= b) { n.v = v; VD.changed = true; } }); VD.lastX = x; }
+  }
+  vc.addEventListener('pointermove', (e) => { const [x, y] = velAt(e); if (!VD) { vc.style.cursor = velHit(x) ? 'ns-resize' : 'crosshair'; return; } velMove(x, y); renderNoteForm(true); });
+  const velUp = () => { if (!VD) return; const ch = VD.changed; VD = null; if (ch) afterEdit(); else E.hist.pop(); renderNoteForm(); };
+  vc.addEventListener('pointerup', velUp); vc.addEventListener('pointercancel', velUp);
+
   /* numeric form */
   function renderNoteForm(liveOnly) {
     const l = editLayer(); const sel = Array.from(E.sel);
     const ids = ['nStart', 'nLen', 'nPitch', 'nVel'];
     const one = sel.length === 1 ? sel[0] : null;
     $('noteSel').textContent = !l ? '' : (sel.length > 1 ? t('roll.multi', { n: sel.length }) : (one ? '' : t('roll.noSel')));
+    $('selFields').hidden = !one;
     ids.forEach(id => { $(id).disabled = !one; if (!one) $(id).value = ''; });
+    const has = sel.length > 0;
+    ['selCopy', 'selDup', 'rollDel'].forEach(id => { $(id).disabled = !has; }); document.querySelectorAll('[data-st]').forEach(b => { b.disabled = !has; });
+    $('selPaste').disabled = !(E.clip && E.clip.notes.length) || !l;
     if (one && document.activeElement && !ids.includes(document.activeElement.id) || (one && !document.activeElement)) {
       $('nStart').value = (one.t + offOf(l)).toFixed(3); $('nLen').value = Math.round(one.d * 1000); $('nPitch').value = one.n; $('nVel').value = one.v;
     } else if (one) { $('nStart').value = $('nStart').value || (one.t + offOf(l)).toFixed(3); }
@@ -1017,6 +1267,13 @@
       const px = Math.round(xOf(s)) + 0.5; rg.strokeStyle = '#2a2f3a'; rg.beginPath(); rg.moveTo(px, 0); rg.lineTo(px, H); rg.stroke();
       rg.fillStyle = '#8b92a3'; rg.fillText(fmtTime(s).replace(/\.0$/, ''), px + 4, RH / 2);
     }
+    // markers
+    S.markers.forEach((m, i) => {
+      const mx = Math.round(xOf(m.t)) + 0.5; if (mx < GUT || mx > W) return;
+      rg.strokeStyle = 'rgba(76,201,240,.45)'; rg.setLineDash([3, 3]); rg.beginPath(); rg.moveTo(mx, RH); rg.lineTo(mx, H); rg.stroke(); rg.setLineDash([]);
+      rg.fillStyle = '#4cc9f0'; rg.fillRect(mx - 0.5, 0, 1.5, RH); rg.beginPath(); rg.moveTo(mx, 2); rg.lineTo(mx + 8, 2); rg.lineTo(mx + 5, 6); rg.lineTo(mx, 10); rg.closePath(); rg.fill();
+      rg.font = '600 9px system-ui, sans-serif'; rg.fillStyle = '#9fe3f7'; rg.fillText(m.name || String(i + 1), mx + 11, 8);
+    });
     // video end marker
     if (T.duration) { const px = xOf(T.duration); if (px < W) { rg.fillStyle = 'rgba(255,255,255,.08)'; rg.fillRect(px, RH, W - px, H - RH); } }
     // notes
@@ -1051,8 +1308,8 @@
     return {
       app: 'MidiMovie', version: 2, projectName: P.name, nextNum: S.nextNum,
       inst: { presetId: S.inst.presetId, params: S.inst.params },
-      layers: S.layers.map(layerData), pending: S.pending ? layerData(S.pending) : null, editId: E.id, videoName: S.videoName,
-      settings: { octave: S.octave, transpose: S.transpose, recFrom: S.recFrom, countIn: S.countIn, latencyMs: S.latencyMs, monitor: S.monitor, velFixed: S.velFixed, typing: S.typing }
+      markers: S.markers.map(m => ({ t: +m.t.toFixed(4), name: m.name || '' })), layers: S.layers.map(layerData), pending: S.pending ? layerData(S.pending) : null, editId: E.id, videoName: S.videoName,
+      settings: { octave: S.octave, transpose: S.transpose, recFrom: S.recFrom, countIn: S.countIn, latencyMs: S.latencyMs, monitor: S.monitor, velFixed: S.velFixed, typing: S.typing, rate: T.rate }
     };
   }
   function buildLayer(l, i) {
@@ -1078,6 +1335,9 @@
     if (st.monitor != null) { S.monitor = !!st.monitor; $('monitorLayers').checked = S.monitor; }
     if (st.velFixed != null) { S.velFixed = !!st.velFixed; $('velMode').value = S.velFixed ? 'fixed' : 'normal'; }
     if (st.typing != null) { S.typing = !!st.typing; $('typing').checked = S.typing; }
+    S.markers = (data.markers || []).map(m => ({ t: +m.t, name: String(m.name || '').slice(0, 24) })).filter(m => isFinite(m.t)).sort((a, b) => a.t - b.t);
+    T.setRate([1, 0.75, 0.5, 0.25].includes(+st.rate) ? +st.rate : 1);
+    Sampler.ensureAll(Backup.sampleIds(data)).then(() => { resetScheduler(); renderLayers(); if (window.UI && UI.refreshSampler) UI.refreshSampler(); });
     E.sel.clear(); E.hist = []; E.redo = [];
     E.id = data.pending && S.pending ? 'pending' : (S.layers.some(l => l.id === data.editId) ? data.editId : null);
     ensureAudio(); resetScheduler(); refreshAllChannels(); updateOct(); updateUI(); fitRoll();
@@ -1162,7 +1422,7 @@
   /* ================= init ================= */
   (function init() {
     buildInstrument();
-    try { const tb = localStorage.getItem('midimovie.tab'); if (tb === 'pro' || tb === 'simple') S.tab = tb; } catch (e) { /* ignore */ }
+    try { const tb = localStorage.getItem('midimovie.tab'); if (tb === 'pro' || tb === 'simple' || tb === 'sampler') S.tab = tb; } catch (e) { /* ignore */ }
     setTab(S.tab);
     initAudio();
     I18N.setLang(I18N.lang);   // applies static strings + calls renderAllText
@@ -1171,10 +1431,12 @@
     else if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'midi' }).then(p => { if (p.state === 'granted') connectMIDI(); }).catch(() => {});
     }
-    updateKeyLabels();
+    buildPiano();
+    Sampler.refresh().then(() => { renderLayers(); syncInstrumentUI(); if (window.UI && UI.refreshSampler) UI.refreshSampler(); }).catch(() => {});
     requestAnimationFrame(frame);
     loadProject();
     // test hook
-    window.__mm = { P, serialize, saveNow, renderNoteForm, E, S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, exportLayers, connectMIDI };
+    window.MM = { S, T, E, P, toast, download, safeName, serialize, applyData, saveNow, renderAudio, importedLayers, setInstrument, ensureAudio, auditionNote, playNote, releaseNote, isAudible, layerLabel, getPID: () => PID, setTab, t, liveUpdate: () => { if (liveCh) { liveCh.params = S.inst.params; Synth.updateChannel(liveCh); } syncInstrumentUI(); }, renderLayers, syncInstrumentUI, soundName, stepFrames, toggleMarker, jumpMarker, fitRoll };
+    window.__mm = { P, serialize, saveNow, renderNoteForm, E, S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, connectMIDI, renderAudio, copySel, pasteClip, dupSel, transposeSel, stepFrames, toggleMarker };
   })();
 })();

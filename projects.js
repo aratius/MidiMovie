@@ -50,6 +50,7 @@
     const mk = (key, fn, cls) => { const b = el('button', 'btn small ' + (cls || 'ghost'), t(key)); b.type = 'button'; b.addEventListener('click', fn); acts.appendChild(b); };
     mk('home.rename', async () => { const n = prompt(t('home.renamePrompt'), p.name); if (n == null) return; p.name = n.trim() || p.name; p.updated = Date.now(); await Store.put(p); load(); });
     mk('home.duplicate', async () => { await Store.duplicate(p.id, p.name + ' ' + t('home.copy')); load(); });
+    mk('home.backup', async (ev) => { const b = ev.currentTarget; b.disabled = true; toast(t('prj.packing')); try { const { blob, name } = await Backup.exportProject(p.id); download(blob, name); toast(t('prj.backupDone', { name, size: (blob.size / 1e6).toFixed(1) + ' MB' })); } catch (err) { console.error(err); toast(String(err && err.message || err)); } b.disabled = false; });
     mk('home.export', async () => { const r = await Store.get(p.id); if (!r || !r.data) { toast(t('exp.nothing')); return; } download(new Blob([JSON.stringify(Object.assign({ projectName: r.name }, r.data))], { type: 'application/json' }), safe(r.name) + '.midimovie.json'); });
     mk('home.delete', async () => { if (!confirm(t('home.deleteConfirm', { name: p.name }))) return; await Store.del(p.id); load(); }, 'danger');
     c.appendChild(acts);
@@ -75,8 +76,10 @@
   $('importBtn').addEventListener('click', () => $('importFile').click());
   $('importFile').addEventListener('change', async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-    try { const d = JSON.parse(await f.text()); if (d.app !== 'MidiMovie' || !Array.isArray(d.layers)) throw new Error('bad'); await create(d.projectName || f.name.replace(/\.midimovie\.json$|\.json$/i, ''), d); }
-    catch (err) { toast(t('proj.invalid')); }
+    if (!Store.available) { toast(t('proj.noStorage')); return; }
+    toast(t('home.importing'));
+    try { const id = await Backup.importFile(f); Store.persist(); location.href = 'editor.html?p=' + encodeURIComponent(id); }
+    catch (err) { console.error(err); toast(t('proj.invalid')); }
   });
 
   function renderAll() { buildLang(); buildManual(); I18N.applyStatic(); render(); storageInfo(); }
