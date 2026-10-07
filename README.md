@@ -1,24 +1,35 @@
 # MidiMovie
 
-Play a MIDI keyboard along to a video — right in the browser — record layered takes, and export the audio as WAV.
+MIDIキーボードで映像に合わせて演奏し、重ね録りして音声を書き出すブラウザツール。
+Score a video with a MIDI keyboard — record layered takes in real time and export the audio.
 
-**UI languages:** English (default) · 中文 · 日本語
+**https://aratius.github.io/MidiMovie/**
 
-## Features
-- **Web MIDI input** with device list, channel filter, live MIDI monitor, sustain pedal, pitch bend, octave / transpose.
-- **12 built-in synth presets** (leads, pads, bass, FM bell, plus SFX: zap / whoosh / impact) and a full parameter editor (oscillators, FM, filter, envelope, pitch envelope, vibrato, reverb). One-click randomize.
-- **Load any local video** (drag & drop). Press **Record** — the video plays from the start (or the current position, with optional count-in) and your playing is recorded.
-- **Keep or discard** each take. Kept takes become **layers** — record as many as you like, each with its own sound, volume, mute/solo and time nudge.
-- **Export** the mix or any single layer as 16-bit WAV (rendered offline, so it is exact regardless of how the browser played the video).
-- Save / open a project as JSON.
+## 構成 / Structure
 
-## Why video lag does not desync your notes
-Notes are stored in **video time** (`video.currentTime`), not wall-clock time, and playback is scheduled against the video clock. If the browser stutters, the picture and the music stall together. Export is rendered offline from those video-time positions.
+| Path | 内容 |
+|---|---|
+| `index.html` | プロジェクト一覧 + 取扱説明書への導線 / Project list + manual links |
+| `editor.html?p=<id>` | エディタ本体 / The editor |
+| `manual/MidiMovie-manual-{en,zh,ja}.pdf` | 取扱説明書 (3言語) / User manual |
+| `tools/build_manual.py` | 説明書PDFの生成スクリプト (Playwright) |
 
-## Run
-Open `index.html` in Chrome / Edge / Opera (Web MIDI needs a Chromium-based browser; Firefox has partial support). Nothing is uploaded — everything runs locally.
+## 特長 / Features
 
-Deployed with GitHub Pages: Settings → Pages → Deploy from branch → `main` / root.
+- 映像を読み込み、再生しながらMIDIキーボード（またはPCキーボード）で録音。テイクは採用/破棄、レイヤーで重ね録り
+- 音は「映像の時間」で保存し、オフラインレンダリングで書き出すので、映像がカクついてもズレない
+- シンプル(プリセット56種・リファレンス音色含む) / プロ(生パラメータ)の2タブ
+- ノートエディタ(ピアノロール)で録音後に位置・長さ・音程を調整
+- WAV書き出し (ミックス / レイヤー別)
+- EN / 中文 / 日本語 UI
+- プロジェクトはブラウザのIndexedDBに自動保存（映像含む）。サーバー・DB不要。JSONで書き出し/読み込みも可能（映像は含まれません）
 
-## Shortcuts
-`Space` play/pause · `Esc` stop · `Home` rewind · `Z`/`X` octave · `A W S E D F T G Y H U J K` piano (computer keyboard)
+## ローカルで動かす / Run locally
+
+ビルド不要。静的ファイルなので任意のHTTPサーバーで配信します（Web MIDI/IndexedDBのため `file://` ではなく http 推奨）。
+
+```
+python3 -m http.server 8000   # → http://localhost:8000/
+```
+
+Chrome / Edge / Opera 推奨 (Web MIDI対応)。

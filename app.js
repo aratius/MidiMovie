@@ -247,14 +247,17 @@
   function previewTake() { if (!S.pending) return; ensureAudio(); T.pause(); T.seek(0); T.play(); }
 
   /* ================= video loading ================= */
-  function loadVideoFile(file) {
+  function loadVideoFile(file, opts) {
     if (!file) return;
+    opts = opts || {};
     if (S.recording || S.counting) stopRecording();
     T.pause();
     if (S.videoUrl) URL.revokeObjectURL(S.videoUrl);
     S.videoUrl = URL.createObjectURL(file); S.videoName = file.name.replace(/\.[^.]+$/, '');
     video.src = S.videoUrl; T.hasVideo = true; video.load();
     video.volume = parseFloat($('videoVol').value); video.muted = vMuted;
+    if (opts.seek) video.addEventListener('loadedmetadata', () => { try { video.currentTime = Math.min(opts.seek, video.duration || opts.seek); } catch (e) { /* ignore */ } }, { once: true });
+    if (!opts.fromStore && typeof persistVideo === 'function') persistVideo(file);
     updateStageUI(); resetScheduler();
   }
   function unloadVideo() {
@@ -789,30 +792,6 @@
     const audible = S.layers.filter(isAudible);
     exportLayers(audible, 'mix', $('expMix'));
   });
-  $('saveProj').addEventListener('click', () => {
-    const data = { app: 'MidiMovie', version: 1, nextNum: S.nextNum, inst: S.inst, layers: S.layers.map(l => ({ num: l.num, name: l.name, color: l.color, notes: l.notes, bends: l.bends, params: l.params, presetId: l.presetId, volume: l.volume, mute: l.mute, solo: l.solo, offsetMs: l.offsetMs })) };
-    download(new Blob([JSON.stringify(data)], { type: 'application/json' }), safeName(S.videoName || 'midimovie') + '.midimovie.json');
-  });
-  $('openProj').addEventListener('click', () => $('projFile').click());
-  $('projFile').addEventListener('change', async (e) => {
-    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-    try {
-      const data = JSON.parse(await f.text());
-      if (data.app !== 'MidiMovie' || !Array.isArray(data.layers)) throw new Error('bad');
-      T.pause(); S.layers.forEach(disposeLayer);
-      S.layers = data.layers.map((l, i) => ({
-        id: 'l' + i + '_' + Date.now(), num: l.num || i + 1, name: l.name || null, color: l.color || COLORS[i % COLORS.length],
-        notes: (l.notes || []).map(n => ({ t: +n.t, d: +n.d, n: +n.n, v: +n.v })).filter(n => isFinite(n.t + n.d + n.n + n.v)),
-        bends: (l.bends || []).map(b => ({ t: +b.t, v: +b.v })).filter(b => isFinite(b.t + b.v)),
-        params: Object.assign({}, Synth.BASE, l.params), presetId: l.presetId || 'custom', volume: l.volume == null ? 1 : +l.volume, mute: !!l.mute, solo: !!l.solo, offsetMs: +l.offsetMs || 0
-      }));
-      S.nextNum = data.nextNum || S.layers.length + 1;
-      if (data.inst && data.inst.params) setInstrument(data.inst.params, data.inst.presetId);
-      ensureAudio(); resetScheduler(); refreshAllChannels(); updateUI(); toast(t('proj.loaded'));
-    } catch (err) { toast(t('proj.invalid')); }
-  });
-  window.addEventListener('beforeunload', (e) => { if (S.layers.length || S.pending) { e.preventDefault(); e.returnValue = ''; } });
-
   /* ================= note editor (piano roll) ================= */
   const E = { id: null, sel: new Set(), pps: 80, viewStart: 0, lo: 48, hi: 84, snap: 0.01, follow: true, hist: [], redo: [], mode: null, drag: null, pointer: null };
   const rc = $('roll'), rg = rc.getContext('2d');
@@ -1064,6 +1043,100 @@
     if (px >= GUT && px <= W) { rg.strokeStyle = '#fff'; rg.lineWidth = 1.5; rg.beginPath(); rg.moveTo(px, 0); rg.lineTo(px, H); rg.stroke(); rg.lineWidth = 1; rg.fillStyle = '#fff'; rg.beginPath(); rg.moveTo(px - 5, 0); rg.lineTo(px + 5, 0); rg.lineTo(px, 7); rg.fill(); }
   }
 
+  /* ================= project persistence (IndexedDB autosave) ================= */
+  let PID = new URLSearchParams(location.search).get('p');
+  const P = { rec: null, lastJson: '', thumb: null, name: '', state: '' };
+  const layerData = (l) => ({ id: l.id, num: l.num, name: l.name, color: l.color, notes: l.notes, bends: l.bends, params: l.params, presetId: l.presetId, volume: l.volume, mute: l.mute, solo: l.solo, offsetMs: l.offsetMs });
+  function serialize() {
+    return {
+      app: 'MidiMovie', version: 2, projectName: P.name, nextNum: S.nextNum,
+      inst: { presetId: S.inst.presetId, params: S.inst.params },
+      layers: S.layers.map(layerData), pending: S.pending ? layerData(S.pending) : null, editId: E.id, videoName: S.videoName,
+      settings: { octave: S.octave, transpose: S.transpose, recFrom: S.recFrom, countIn: S.countIn, latencyMs: S.latencyMs, monitor: S.monitor, velFixed: S.velFixed, typing: S.typing }
+    };
+  }
+  function buildLayer(l, i) {
+    return {
+      id: l.id || ('l' + i + '_' + Date.now()), num: l.num || i + 1, name: l.name || null, color: l.color || COLORS[i % COLORS.length],
+      notes: (l.notes || []).map(n => ({ t: +n.t, d: +n.d, n: +n.n, v: +n.v })).filter(n => isFinite(n.t + n.d + n.n + n.v)),
+      bends: (l.bends || []).map(b => ({ t: +b.t, v: +b.v })).filter(b => isFinite(b.t + b.v)),
+      params: Object.assign({}, Synth.BASE, l.params), presetId: l.presetId || 'custom', volume: l.volume == null ? 1 : +l.volume, mute: !!l.mute, solo: !!l.solo, offsetMs: +l.offsetMs || 0
+    };
+  }
+  function applyData(data) {
+    T.pause(); S.layers.forEach(disposeLayer); if (S.pending) disposeLayer(S.pending);
+    S.layers = data.layers.map(buildLayer);
+    S.pending = data.pending ? Object.assign(buildLayer(data.pending, 0), { id: 'p' + Date.now() }) : null;
+    S.nextNum = data.nextNum || S.layers.length + 1;
+    if (data.inst && data.inst.params) setInstrument(data.inst.params, data.inst.presetId);
+    const st = data.settings || {};
+    if (st.octave != null) S.octave = clamp(+st.octave || 0, -4, 4);
+    if (st.transpose != null) S.transpose = clamp(+st.transpose || 0, -12, 12);
+    if (st.recFrom) { S.recFrom = st.recFrom === 'here' ? 'here' : 'start'; $('recFrom').value = S.recFrom; }
+    if (st.countIn != null) { S.countIn = +st.countIn || 0; $('countIn').value = S.countIn; }
+    if (st.latencyMs != null) { S.latencyMs = +st.latencyMs || 0; $('latency').value = S.latencyMs; }
+    if (st.monitor != null) { S.monitor = !!st.monitor; $('monitorLayers').checked = S.monitor; }
+    if (st.velFixed != null) { S.velFixed = !!st.velFixed; $('velMode').value = S.velFixed ? 'fixed' : 'normal'; }
+    if (st.typing != null) { S.typing = !!st.typing; $('typing').checked = S.typing; }
+    E.sel.clear(); E.hist = []; E.redo = [];
+    E.id = data.pending && S.pending ? 'pending' : (S.layers.some(l => l.id === data.editId) ? data.editId : null);
+    ensureAudio(); resetScheduler(); refreshAllChannels(); updateOct(); updateUI(); fitRoll();
+  }
+  function setSaveState(k) {
+    P.state = k; const e = $('saveState'); if (!e) return;
+    e.className = 'save-state ' + (k === 'saved' ? 'ok' : (k === 'saving' ? '' : 'warn')); e.textContent = k ? t('proj.' + k) : '';
+  }
+  async function saveNow(force) {
+    if (!P.rec || !Store.available) return;
+    const data = serialize(), cmp = JSON.stringify(data);
+    if (!force && cmp === P.lastJson) return;
+    P.lastJson = cmp; setSaveState('saving');
+    data.playhead = T.time;
+    Object.assign(P.rec, { data, name: P.name, updated: Date.now(), layerCount: S.layers.length, videoName: S.videoName, thumb: P.thumb || P.rec.thumb || null });
+    try { await Store.put(P.rec); setSaveState('saved'); } catch (err) { console.error(err); setSaveState('error'); }
+  }
+  function persistVideo(file) {
+    if (!P.rec || !Store.available) return;
+    Store.putVideo(PID, file, file.name).then(() => Store.thumb(file)).then(th => { P.thumb = th || P.thumb; return saveNow(true); })
+      .catch(() => { toast(t('proj.videoNotSaved')); });
+    Store.persist();
+  }
+  async function loadProject() {
+    if (!Store.available) { setSaveState('error'); toast(t('proj.noStorage')); return; }
+    let rec = null;
+    try {
+      if (!PID) { // opened without a project -> create one on the fly
+        PID = Store.newId(); rec = { id: PID, name: t('proj.untitled'), created: Date.now(), updated: Date.now(), layerCount: 0, videoName: '', thumb: null, data: null };
+        await Store.put(rec); history.replaceState(null, '', '?p=' + PID);
+      } else rec = await Store.get(PID);
+    } catch (err) { console.error(err); }
+    if (!rec) { toast(t('proj.notFound')); setTimeout(() => location.replace('./'), 1500); return; }
+    P.rec = rec; P.name = rec.name; P.thumb = rec.thumb; $('projName').value = rec.name; document.title = rec.name + ' – MidiMovie';
+    if (rec.data && rec.data.layers) applyData(rec.data);
+    let v = null; try { v = await Store.getVideo(PID); } catch (err) { /* ignore */ }
+    if (v && v.blob) loadVideoFile(new File([v.blob], v.name || 'video', { type: v.type || v.blob.type }), { fromStore: true, seek: rec.data && rec.data.playhead });
+    P.lastJson = JSON.stringify(serialize()); setSaveState('saved');
+    Store.persist();
+    setInterval(saveNow, 700);
+  }
+  $('projName').addEventListener('input', (e) => { P.name = e.target.value.trim() || t('proj.untitled'); document.title = P.name + ' – MidiMovie'; });
+  window.addEventListener('pagehide', () => saveNow(true));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(true); });
+  window.addEventListener('beforeunload', (e) => { if (!P.rec || !Store.available) { if (S.layers.length || S.pending) { e.preventDefault(); e.returnValue = ''; } } else if (JSON.stringify(serialize()) !== P.lastJson) { saveNow(true); e.preventDefault(); e.returnValue = ''; } });
+
+  $('saveProj').addEventListener('click', () => {
+    download(new Blob([JSON.stringify(serialize())], { type: 'application/json' }), safeName(P.name || S.videoName || 'midimovie') + '.midimovie.json');
+  });
+  $('openProj').addEventListener('click', () => $('projFile').click());
+  $('projFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (data.app !== 'MidiMovie' || !Array.isArray(data.layers)) throw new Error('bad');
+      applyData(data); toast(t('proj.loaded')); saveNow(true);
+    } catch (err) { toast(t('proj.invalid')); }
+  });
+
   /* ================= language ================= */
   function buildLang() {
     const host = $('langSwitch'); host.innerHTML = '';
@@ -1082,7 +1155,7 @@
     if (!midiAccess) { $('midiConnect').textContent = t('midi.connect'); $('midiPill').textContent = t('midi.notConnected'); }
     const m = $('midiMsg'); if (!m.hidden && m.dataset.key) m.textContent = t(m.dataset.key);
     $('recBadge').querySelector('span:last-child').textContent = t('rec.recording');
-    updateTransportUI();
+    updateTransportUI(); if (P.state) setSaveState(P.state);
   }
   I18N.onChange(renderAllText);
 
@@ -1100,7 +1173,8 @@
     }
     updateKeyLabels();
     requestAnimationFrame(frame);
+    loadProject();
     // test hook
-    window.__mm = { E, S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, exportLayers, connectMIDI };
+    window.__mm = { P, serialize, saveNow, renderNoteForm, E, S, T, Synth, playNote, releaseNote, startRecording, stopRecording, keepTake, onMidi, exportLayers, connectMIDI };
   })();
 })();

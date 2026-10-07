@@ -8,212 +8,37 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101216'/%3E%3Crect x='6' y='7' width='4' height='18' rx='1' fill='%23ff7a45'/%3E%3Crect x='14' y='12' width='4' height='13' rx='1' fill='%23ff7a45'/%3E%3Crect x='22' y='5' width='4' height='20' rx='1' fill='%23ff7a45'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<div id="audioBanner" class="banner" hidden data-i18n="audio.enable"></div>
-
+<body class="home">
 <header class="top">
   <div class="brand">
     <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="7" width="4" height="18" rx="1"/><rect x="14" y="12" width="4" height="13" rx="1"/><rect x="22" y="5" width="4" height="20" rx="1"/></svg>
-    <div>
-      <h1>MidiMovie</h1>
-      <p data-i18n="app.subtitle"></p>
-    </div>
+    <div><h1>MidiMovie</h1><p data-i18n="app.subtitle"></p></div>
   </div>
   <div class="lang" id="langSwitch" role="group" data-i18n-title="lang.label"></div>
 </header>
 
-<main class="layout">
-  <div class="col-main">
+<main class="home-main">
+  <section class="card manual-card">
+    <div class="manual-text">
+      <h2 data-i18n="home.manualTitle"></h2>
+      <p class="muted" data-i18n="home.manualDesc"></p>
+    </div>
+    <div class="manual-links" id="manualLinks"></div>
+  </section>
 
-    <!-- STAGE -->
-    <section class="card stage">
-      <div class="video-wrap" id="videoWrap">
-        <video id="video" playsinline preload="auto"></video>
-        <div class="drop" id="dropZone">
-          <svg viewBox="0 0 24 24" class="drop-ico" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v2.5l4-2.5v10l-4-2.5V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
-          <div class="drop-title" data-i18n="stage.dropTitle"></div>
-          <div class="drop-or" data-i18n="stage.or"></div>
-          <button class="btn primary" id="loadVideoBtn" data-i18n="stage.loadVideo"></button>
-        </div>
-        <div class="count" id="countOverlay" hidden></div>
-        <div class="rec-badge" id="recBadge" hidden><span class="rec-dot"></span><span data-i18n="rec.recording"></span></div>
-        <button class="btn small ghost change-video" id="changeVideoBtn" hidden data-i18n="stage.changeVideo"></button>
-      </div>
-      <input type="file" id="videoFile" accept="video/*,.mp4,.mov,.m4v,.webm,.mkv" hidden>
+  <section class="home-head">
+    <h2 data-i18n="home.projects"></h2>
+    <div class="head-actions">
+      <button class="btn small ghost" id="importBtn" data-i18n="home.import"></button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button class="btn primary" id="newBtn" data-i18n="home.new"></button>
+    </div>
+  </section>
 
-      <div class="timeline-wrap"><canvas id="timeline" height="60"></canvas></div>
+  <div class="note-msg" id="homeMsg" hidden></div>
+  <div class="proj-grid" id="projGrid"></div>
 
-      <div class="transport">
-        <div class="tbtns">
-          <button class="tbtn" id="btnStart" data-i18n-title="tr.toStart"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg></button>
-          <button class="tbtn" id="btnPlay" data-i18n-title="tr.play"><svg viewBox="0 0 24 24" id="icoPlay"><path d="M7 4.5v15l13-7.5z"/></svg><svg viewBox="0 0 24 24" id="icoPause" hidden><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
-          <button class="tbtn" id="btnStop" data-i18n-title="tr.stop"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg></button>
-          <button class="tbtn rec" id="btnRec" data-i18n-title="tr.record"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
-        </div>
-        <div class="time mono" id="timeDisplay">0:00.0 / 0:00.0</div>
-        <div class="vol">
-          <button class="tbtn small" id="btnMute" data-i18n-title="stage.mute"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-          <input type="range" id="videoVol" min="0" max="1" step="0.01" value="0.6" data-i18n-title="stage.videoVolume">
-        </div>
-      </div>
-
-      <div class="rec-options">
-        <label><span data-i18n="rec.startFrom"></span>
-          <select id="recFrom"><option value="start" data-i18n="rec.fromStart"></option><option value="here" data-i18n="rec.fromHere"></option></select>
-        </label>
-        <label><span data-i18n="rec.countIn"></span>
-          <select id="countIn"></select>
-        </label>
-        <label><span data-i18n="rec.latency"></span>
-          <span class="num"><input type="number" id="latency" value="0" min="-300" max="300" step="5"> <em>ms</em></span>
-        </label>
-        <label class="check"><input type="checkbox" id="monitorLayers" checked><span data-i18n="rec.monitor"></span></label>
-      </div>
-
-      <div class="statusline">
-        <span id="stageStatus" class="muted"></span>
-        <span class="muted sync" id="syncInfo" hidden></span>
-      </div>
-    </section>
-
-    <!-- NOTE EDITOR -->
-    <section class="card roll" id="rollCard">
-      <div class="card-head">
-        <h2 data-i18n="roll.title"></h2>
-        <span class="roll-target" id="rollTarget"></span>
-      </div>
-      <div class="roll-tools">
-        <label><span data-i18n="roll.snap"></span>
-          <select id="rollSnap"><option value="0" data-i18n="roll.snapOff"></option><option value="0.01" selected>10 ms</option><option value="0.05">50 ms</option><option value="0.1">100 ms</option><option value="0.25">250 ms</option><option value="0.5">500 ms</option></select></label>
-        <label class="zoom"><span data-i18n="roll.zoom"></span><input type="range" id="rollZoom" min="0" max="1000" value="400"></label>
-        <label class="check"><input type="checkbox" id="rollFollow" checked><span data-i18n="roll.follow"></span></label>
-        <button class="btn small" id="rollFit" data-i18n="roll.fit"></button>
-        <button class="btn small" id="rollUndo" data-i18n="roll.undo"></button>
-        <button class="btn small" id="rollRedo" data-i18n="roll.redo"></button>
-        <button class="btn small danger" id="rollDel" data-i18n="roll.delete"></button>
-      </div>
-      <div class="roll-wrap" id="rollWrap"><canvas id="roll" tabindex="0"></canvas><div class="roll-empty" id="rollEmpty" data-i18n="roll.none"></div></div>
-      <div class="note-form" id="noteForm">
-        <span class="muted" id="noteSel"></span>
-        <label><span data-i18n="roll.start"></span><input type="number" id="nStart" step="0.001" min="0"></label>
-        <label><span data-i18n="roll.len"></span><input type="number" id="nLen" step="5" min="20"></label>
-        <label><span data-i18n="roll.pitch"></span><input type="number" id="nPitch" step="1" min="0" max="127"></label>
-        <label><span data-i18n="roll.vel"></span><input type="number" id="nVel" step="1" min="1" max="127"></label>
-      </div>
-      <div class="muted small-text" data-i18n="roll.help"></div>
-    </section>
-
-    <!-- PENDING TAKE -->
-    <section class="card take" id="takeCard" hidden>
-      <div class="take-head">
-        <span class="take-badge" data-i18n="take.title"></span>
-        <span class="muted mono" id="takeInfo"></span>
-      </div>
-      <div class="btnrow">
-        <button class="btn" id="takePreview" data-i18n="take.preview"></button>
-        <button class="btn primary" id="takeKeep" data-i18n="take.keep"></button>
-        <button class="btn" id="takeRerec" data-i18n="take.rerecord"></button>
-        <button class="btn danger" id="takeDiscard" data-i18n="take.discard"></button>
-      </div>
-    </section>
-
-    <!-- LAYERS -->
-    <section class="card layers">
-      <div class="card-head">
-        <h2 data-i18n="layers.title"></h2>
-        <div class="head-actions">
-          <button class="btn small ghost" id="saveProj" data-i18n="proj.save"></button>
-          <button class="btn small ghost" id="openProj" data-i18n="proj.open"></button>
-          <input type="file" id="projFile" accept=".json,application/json" hidden>
-        </div>
-      </div>
-      <div id="layerList" class="layer-list"></div>
-      <div class="export">
-        <h3 data-i18n="exp.title"></h3>
-        <div class="export-row">
-          <label><span data-i18n="exp.rate"></span>
-            <select id="expRate"><option value="44100">44.1 kHz</option><option value="48000" selected>48 kHz</option></select>
-          </label>
-          <label class="check"><input type="checkbox" id="expNorm"><span data-i18n="exp.normalize"></span></label>
-          <button class="btn primary" id="expMix" data-i18n="exp.mix"></button>
-        </div>
-      </div>
-    </section>
-
-    <!-- KEYBOARD -->
-    <section class="card kbcard">
-      <div class="card-head">
-        <h2 data-i18n="kb.title"></h2>
-        <div class="oct-controls">
-          <div class="stepper"><span data-i18n="midi.octave"></span>
-            <button class="tbtn small" id="octDown">−</button><b class="mono" id="octVal">0</b><button class="tbtn small" id="octUp">+</button></div>
-          <div class="stepper"><span data-i18n="midi.transpose"></span>
-            <button class="tbtn small" id="trDown">−</button><b class="mono" id="trVal">0</b><button class="tbtn small" id="trUp">+</button></div>
-        </div>
-      </div>
-      <div class="piano" id="piano"></div>
-      <div class="kb-hint" data-i18n="kb.hint"></div>
-      <div class="muted small-text" data-i18n="help.shortcuts"></div>
-    </section>
-  </div>
-
-  <aside class="col-side">
-    <!-- MIDI -->
-    <section class="card midi">
-      <div class="card-head">
-        <h2 data-i18n="midi.title"></h2>
-        <span class="pill" id="midiPill" data-i18n="midi.notConnected"></span>
-      </div>
-      <button class="btn primary wide" id="midiConnect" data-i18n="midi.connect"></button>
-      <div class="note-msg" id="midiMsg" hidden></div>
-      <div class="inputs" id="midiInputs"></div>
-      <div class="grid2">
-        <label><span data-i18n="midi.channel"></span><select id="midiChannel"></select></label>
-        <label><span data-i18n="midi.velocity"></span>
-          <select id="velMode"><option value="normal" data-i18n="midi.velNormal"></option><option value="fixed" data-i18n="midi.velFixed"></option></select></label>
-      </div>
-      <label class="check"><input type="checkbox" id="typing" checked><span data-i18n="midi.typing"></span></label>
-      <div class="btnrow"><button class="btn small" id="panic" data-i18n="midi.panic"></button></div>
-
-      <div class="monitor-head"><h3 data-i18n="midi.monitor"></h3><button class="btn small ghost" id="monClear" data-i18n="midi.clear"></button></div>
-      <div class="monitor mono" id="monitor"></div>
-    </section>
-
-    <!-- INSTRUMENT -->
-    <section class="card inst">
-      <div class="card-head">
-        <h2 data-i18n="inst.title"></h2>
-        <div class="tabs" role="tablist">
-          <button class="tab" role="tab" id="tabBtnSimple" data-tab="simple" data-i18n="tab.simple"></button>
-          <button class="tab" role="tab" id="tabBtnPro" data-tab="pro" data-i18n="tab.pro"></button>
-        </div>
-      </div>
-      <div class="current-sound"><span class="muted" data-i18n="inst.current"></span> <b id="curSound"></b></div>
-
-      <div id="tabSimple">
-        <div class="chips" id="catChips"></div>
-        <div class="preset-grid" id="presetGrid"></div>
-        <div class="macros">
-          <label><span data-i18n="macro.bright"></span><input type="range" id="mBright" min="0" max="1" step="0.01" value="0.5"></label>
-          <label><span data-i18n="macro.length"></span><input type="range" id="mLength" min="0" max="1" step="0.01" value="0.5"></label>
-          <label><span data-i18n="macro.space"></span><input type="range" id="mSpace" min="0" max="1" step="0.01" value="0.5"></label>
-        </div>
-        <div class="save-row">
-          <input type="text" id="mineName" maxlength="40" data-i18n-placeholder="mine.name">
-          <button class="btn small" id="mineSave" data-i18n="mine.save"></button>
-        </div>
-      </div>
-
-      <div id="tabPro" hidden>
-        <div class="muted small-text" data-i18n="inst.hint"></div>
-        <div class="preset-row">
-          <label><span data-i18n="inst.preset"></span><select id="presetSel"></select></label>
-          <button class="btn small" id="randBtn" data-i18n="inst.random"></button>
-        </div>
-        <div id="instParams"></div>
-      </div>
-    </section>
-  </aside>
+  <section class="muted small-text storage-info" id="storageInfo"></section>
 </main>
 
 <footer class="foot muted small-text">
@@ -222,9 +47,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="i18n.js"></script>
-<script src="synth.js"></script>
-<script src="trim.js"></script>
-<script src="presets.js"></script>
-<script src="app.js"></script>
+<script src="db.js"></script>
+<script src="projects.js"></script>
 </body>
 </html>
