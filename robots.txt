@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://aratius.github.io/MidiMovie/sitemap.xml

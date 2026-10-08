@@ -3,6 +3,12 @@
   const DICT = {
     en: {
       'app.subtitle': 'Play your MIDI keyboard along to a video, layer takes, export audio.',
+      'about.title': "Score a video with your MIDI keyboard — in your browser",
+      'about.p': "MidiMovie lets you play a MIDI keyboard along to a video, record layered takes in sync, and export the result as WAV, MIDI or MP4. No install and no account: your projects stay in your browser.",
+      'about.f1': "Play along to any video, with slow-motion recording and frame stepping",
+      'about.f2': "Layered takes, piano-roll editing and 70+ preset sounds",
+      'about.f3': "Free: WAV and MIDI export, up to 2 layers. Pro (one-time purchase): sampler, audio → MIDI, MP4 export, stems and unlimited layers",
+      'about.f4': "Private by design: your videos never leave your device",
       'lang.label': 'Language',
       'audio.enable': 'Click anywhere to enable audio',
 
@@ -418,6 +424,12 @@
 
     zh: {
       'app.subtitle': '用 MIDI 键盘配合视频即兴演奏、叠加录音并导出音频。',
+      'about.title': "在浏览器里用 MIDI 键盘为视频配乐",
+      'about.p': "MidiMovie 让你用 MIDI 键盘配合视频演奏，同步叠加录音，并导出 WAV、MIDI 或 MP4。无需安装、无需账号，项目保存在你的浏览器中。",
+      'about.f1': "配合任意视频演奏，支持慢速录音和逐帧移动",
+      'about.f2': "多层录音、钢琴卷帘编辑、70 多种预设音色",
+      'about.f3': "免费：导出 WAV 和 MIDI，最多 2 个图层。Pro（一次性购买）：采样器、音频→MIDI、MP4 导出、分轨导出、不限图层",
+      'about.f4': "注重隐私：视频不会离开你的设备",
       'lang.label': '语言',
       'audio.enable': '点击页面任意位置以启用音频',
 
@@ -833,6 +845,12 @@
 
     ja: {
       'app.subtitle': 'MIDIキーボードで映像に合わせて演奏し、重ね録りして音声を書き出します。',
+      'about.title': "MIDIキーボードで映像に音楽をつける — ブラウザだけで",
+      'about.p': "MidiMovie は、映像に合わせてMIDIキーボードを演奏し、重ね録りして、WAV・MIDI・MP4で書き出せるブラウザツールです。インストールもアカウントも不要で、プロジェクトはブラウザ内に保存されます。",
+      'about.f1': "好きな映像に合わせて演奏。スロー録音とコマ送り対応",
+      'about.f2': "重ね録り、ピアノロール編集、70種以上のプリセット音色",
+      'about.f3': "無料：WAV・MIDIの書き出し、2レイヤーまで。Pro（買い切り）：サンプラー、音声→MIDI、MP4書き出し、ステム、レイヤー無制限",
+      'about.f4': "プライバシー重視：映像は端末の外に出ません",
       'lang.label': '言語',
       'audio.enable': '画面のどこかをクリックして音声を有効にしてください',
 
