@@ -9,5 +9,5 @@ window.MM_LICENSE = {
   giftPublicKey: '',     // public key printed by `node tools/license-keys.mjs init` — enables free gift keys (see docs/PRO-SETUP.md)
   revoked: [],           // ids of gift keys to switch off, e.g. ['a1b2c3']
   proxy: '',             // optional: URL of tools/license-proxy-worker.js if the browser blocks direct calls (CORS)
-  keyApi: ''             // Stripe route: URL of tools/stripe-license-worker.js (used by thanks.html)
+  keyApi: 'https://midimovie-license.aratius.workers.dev'             // Stripe route: URL of tools/stripe-license-worker.js (used by thanks.html)
 };
