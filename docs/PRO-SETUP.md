@@ -54,7 +54,7 @@ Stripe にはライセンスキー機能がないので、`tools/stripe-license-
 1. Stripe(まずテストモード)で商品「MidiMovie Pro」¥2,980 の **Payment Link** を作る。
    - 完了後の動作: 「サイトにリダイレクト」→ `https://aratius.github.io/MidiMovie/thanks.html?session_id={CHECKOUT_SESSION_ID}`
    - 「Let us handle it(Managed Payments)」を選ぶと税・不正対応は Stripe が負担(+3.5%)。Payment Link で使えるかは画面で確認。
-2. 制限付きキー(rk_…)を作る。権限は **Checkout Sessions の読み取りのみ**。チャットやリポジトリには貼らない。
+2. 制限付きキー(rk_…)を作る。権限は Checkout Sessions・PaymentIntents・Charges が Read、Refunds が Write。チャットやリポジトリには貼らない。
 3. Worker をデプロイ: `wrangler deploy tools/stripe-license-worker.js --name midimovie-license` のあと
    `wrangler secret put STRIPE_RAK` / `STRIPE_WEBHOOK_SECRET` / `GIFT_PRIVATE_PEM`(秘密鍵の中身)/ 任意で `RESEND_API_KEY`。
    Vars: `SITE`, `ALLOW_ORIGIN=https://aratius.github.io`, `FROM_EMAIL`。

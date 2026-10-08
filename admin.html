@@ -29,6 +29,11 @@ button{padding:12px 18px;border-radius:8px;border:0;background:#6c5ce7;color:#ff
   <h2 style="font-size:15px;margin-top:32px" id="t2"></h2>
   <p class="m" id="hn"></p>
   <table id="hist"></table>
+  <h2 style="font-size:15px;margin-top:32px" id="t3"></h2>
+  <p class="m" id="sn"></p>
+  <div class="row"><button class="s" id="ld"></button></div>
+  <p class="err" id="er2"></p>
+  <table id="sales"></table>
   <div class="row"><button class="s" id="out"></button></div>
 </div>
 <script src="license-config.js"></script>
@@ -73,5 +78,23 @@ button{padding:12px 18px;border-radius:8px;border:0;background:#6c5ce7;color:#ff
   };
   $('cp').onclick=async function(){var d=D[lang];try{await navigator.clipboard.writeText(last);$('cp').textContent=d.cpd}catch(e){$('cp').textContent=d.cpf}setTimeout(function(){$('cp').textContent=D[lang].cp},2000)};
   $('sh').onclick=function(){navigator.share({text:last}).catch(function(){})};
+
+  var S={
+   ja:{t:'購入履歴(Stripe)',n:'「返金して無効化」は Stripe で全額返金し、そのキーも停止します。Stripe ダッシュボードから返金した場合も自動で無効になります。',ld:'購入履歴を読み込む',rf:'返金して無効化',rv:'無効化のみ',rfd:'返金済み',rvd:'無効',rfc:'この購入を全額返金し、キーを無効にします。元に戻せません。よろしいですか?',rvc:'このキーを無効にしますか?(返金はされません)',none:'購入はまだありません',fail:'失敗しました',hn:'「無効化」は数日以内に全端末でキーを停止します。'},
+   en:{t:'Purchases (Stripe)',n:'"Refund & revoke" fully refunds in Stripe and switches the key off. Refunds made in the Stripe dashboard are revoked automatically.',ld:'Load purchases',rf:'Refund & revoke',rv:'Revoke only',rfd:'Refunded',rvd:'Revoked',rfc:'Fully refund this purchase and revoke its key? This cannot be undone.',rvc:'Revoke this key? (no refund)',none:'No purchases yet',fail:'Failed',hn:'"Revoke" switches the key off on all devices within days.'},
+   zh:{t:'购买记录(Stripe)',n:'“退款并停用”会在 Stripe 全额退款并停用密钥。在 Stripe 后台退款也会自动停用。',ld:'加载购买记录',rf:'退款并停用',rv:'仅停用',rfd:'已退款',rvd:'已停用',rfc:'将全额退款并停用该密钥,无法撤销。确定吗?',rvc:'停用此密钥?(不退款)',none:'暂无购买',fail:'失败',hn:'“停用”会在数日内使所有设备上的密钥失效。'}};
+  var sales=[];
+  function fmt(x){try{return new Intl.NumberFormat(lang==='zh'?'zh-CN':lang,{style:'currency',currency:x.currency.toUpperCase()}).format(x.amount/(['jpy','krw'].indexOf(x.currency)>=0?1:100))}catch(e){return x.amount+' '+x.currency}}
+  function esc(t){return String(t||'').replace(/[<>&"]/g,'')}
+  function drawSales(){var d=S[lang];$('t3').textContent=d.t;$('sn').textContent=d.n;$('ld').textContent=d.ld;$('hn').textContent=d.hn;
+    $('sales').innerHTML=sales.length?sales.map(function(x){var st=x.refunded?d.rfd:x.revoked?d.rvd:'';
+      return '<tr><td>'+x.date+'<br>'+fmt(x)+'</td><td>'+esc(x.name)+'<br><span class="m">'+esc(x.email)+'</span><br><span class="m">'+x.id+'</span></td><td>'+(st?'<span class="m">'+st+'</span>':'<button class="s sr" data-s="'+x.session+'" data-a="rf" style="padding:4px 10px;font-size:12px">'+d.rf+'</button> <button class="s sr" data-s="'+x.session+'" data-i="'+x.id+'" data-a="rv" style="padding:4px 10px;font-size:12px;margin-top:4px">'+d.rv+'</button>')+'</td></tr>'}).join(''):(api&&sales.loaded?'<tr><td class="m">'+d.none+'</td></tr>':'')}
+  var _apply=apply;apply=function(){_apply();drawSales()};
+  $('ld').onclick=async function(){var d=S[lang];$('er2').textContent='';$('ld').disabled=true;
+    try{var r=await fetch(api+'/sales',{headers:{'Authorization':'Bearer '+tok}});if(r.status===401){ls(T,null);throw new Error(D[lang].bad)}var j=await r.json();if(!j.ok)throw new Error(d.fail+(j.error?' ('+j.error+')':''));sales=j.sales;sales.loaded=true;drawSales()}catch(e){$('er2').textContent=e.message}finally{$('ld').disabled=false}};
+  $('sales').onclick=async function(e){var b=e.target.closest('.sr');if(!b)return;var d=S[lang],rf=b.dataset.a==='rf';if(!confirm(rf?d.rfc:d.rvc))return;b.disabled=true;$('er2').textContent='';
+    try{var r=await fetch(api+(rf?'/refund':'/revoke'),{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(rf?{session:b.dataset.s}:{id:b.dataset.i})});var j=await r.json().catch(function(){return{}});if(!r.ok||!j.ok)throw new Error(d.fail+(j.error?': '+j.error:''));
+      sales.forEach(function(x){if(x.session===b.dataset.s){if(rf)x.refunded=true;else x.revoked=true}});drawSales()}catch(x){$('er2').textContent=x.message;b.disabled=false}};
+  apply();
 })();
 </script></body></html>

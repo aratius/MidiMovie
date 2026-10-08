@@ -2,7 +2,7 @@
 // No database: the key id is derived from the Checkout Session id, so the same purchase always yields the same key.
 //
 // Secrets (wrangler secret put …):
-//   STRIPE_RAK            restricted key (rk_…) with ONLY "Checkout Sessions: Read"
+//   STRIPE_RAK            restricted key (rk_…) with ONLY: Checkout Sessions: Read, PaymentIntents: Read, Charges: Read, Refunds: Write
 //   STRIPE_WEBHOOK_SECRET whsec_… of the webhook endpoint  <worker-url>/webhook
 //   GIFT_PRIVATE_PEM      contents of ~/.midimovie/gift-private.pem  (same key pair as license-keys.mjs)
 //   ADMIN_TOKEN           password for admin.html (issuing free gift keys); pick a long random string
@@ -25,6 +25,14 @@ async function signKey(env, sessionId, name, opts) {
   const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, enc.encode(body)); // WebCrypto = raw r||s (p1363)
   return body + '.' + b64u(sig);
 }
+
+const keyId = async (sessionId) => hex(await crypto.subtle.digest('SHA-256', enc.encode(sessionId))).slice(0, 8);
+async function isAdmin(req, env) {
+  const given = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
+  const [a, b] = await Promise.all([given, env.ADMIN_TOKEN || '\u0000never'].map((x) => crypto.subtle.digest('SHA-256', enc.encode(x))));
+  return !!env.ADMIN_TOKEN && hex(a) === hex(b);
+}
+const stripe = (env, path, init) => fetch('https://api.stripe.com/v1/' + path, { ...(init || {}), headers: { Authorization: 'Bearer ' + env.STRIPE_RAK, ...((init && init.headers) || {}) } });
 
 async function getPaidSession(env, sessionId) {
   const mode = /^rk_live_|^sk_live_/.test(env.STRIPE_RAK || '') ? 'live' : 'test'; // a live Worker never accepts test sessions
@@ -124,6 +132,32 @@ export default {
       if (body.undo) await env.LICENSES.delete('rev:' + id); else await env.LICENSES.put('rev:' + id, '1');
       return json(cors, 200, { ok: true, id, revoked: !body.undo });
     }
+    if (url.pathname === '/sales' && req.method === 'GET') { // admin.html: recent paid purchases (needs ADMIN_TOKEN)
+      if (!(await isAdmin(req, env))) return json(cors, 401, { ok: false });
+      const r = await stripe(env, 'checkout/sessions?limit=50&expand[]=data.payment_intent.latest_charge');
+      if (!r.ok) return json(cors, 502, { ok: false, error: 'stripe ' + r.status });
+      const list = (await r.json()).data.filter((x) => x.payment_status === 'paid');
+      const sales = await Promise.all(list.map(async (x) => {
+        const id = await keyId(x.id), pi = x.payment_intent && typeof x.payment_intent === 'object' ? x.payment_intent : null, ch = pi && pi.latest_charge && typeof pi.latest_charge === 'object' ? pi.latest_charge : null;
+        return { session: x.id, id, date: new Date(x.created * 1000).toISOString().slice(0, 10), name: (x.customer_details && x.customer_details.name) || '', email: (x.customer_details && x.customer_details.email) || '', amount: x.amount_total, currency: x.currency,
+          refunded: !!(ch && ch.refunded) || !!(env.LICENSES && await env.LICENSES.get('ref:' + x.id)), revoked: !!(env.LICENSES && await env.LICENSES.get('rev:' + id)) };
+      }));
+      return json(cors, 200, { ok: true, sales });
+    }
+    if (url.pathname === '/refund' && req.method === 'POST') { // admin.html: refund a purchase in Stripe and switch its key off (needs ADMIN_TOKEN + key permission Refunds: Write)
+      if (!(await isAdmin(req, env))) return json(cors, 401, { ok: false });
+      const body = await req.json().catch(() => ({})), sid = String(body.session || '');
+      if (!/^cs_(live|test)_[A-Za-z0-9]+$/.test(sid)) return json(cors, 400, { ok: false });
+      const sr = await stripe(env, 'checkout/sessions/' + sid);
+      const sess = sr.ok ? await sr.json() : null;
+      if (!sess || !sess.payment_intent) return json(cors, 404, { ok: false, error: 'session' });
+      const rr = await stripe(env, 'refunds', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Idempotency-Key': 'mm-refund-' + sid }, body: 'payment_intent=' + encodeURIComponent(typeof sess.payment_intent === 'string' ? sess.payment_intent : sess.payment_intent.id) });
+      const rj = await rr.json().catch(() => ({}));
+      if (!rr.ok && !(rj.error && rj.error.code === 'charge_already_refunded')) return json(cors, 502, { ok: false, error: (rj.error && rj.error.message) || 'stripe ' + rr.status });
+      const id = await keyId(sid);
+      if (env.LICENSES) { await env.LICENSES.put('ref:' + sid, '1'); await env.LICENSES.put('rev:' + id, '1'); }
+      return json(cors, 200, { ok: true, id, revoked: !!env.LICENSES });
+    }
     if (url.pathname === '/webhook' && req.method === 'POST') {
       const raw = await req.text();
       if (!(await verifyWebhook(env, raw, req.headers.get('Stripe-Signature')))) return new Response('bad signature', { status: 400 });
@@ -131,6 +165,11 @@ export default {
       if (ev.type === 'checkout.session.completed' || ev.type === 'checkout.session.async_payment_succeeded') {
         const s = await getPaidSession(env, ev.data.object.id); // re-fetch: fulfil only when really paid
         if (s) await emailKey(env, s.customer_details && s.customer_details.email, s.customer_details && s.customer_details.name, await signKey(env, s.id, s.customer_details && s.customer_details.name));
+      }
+      if (ev.type === 'charge.refunded' && env.LICENSES && ev.data.object.payment_intent) { // refunded from the Stripe dashboard too: switch the key off
+        const r = await stripe(env, 'checkout/sessions?limit=1&payment_intent=' + encodeURIComponent(ev.data.object.payment_intent));
+        const x = r.ok ? (await r.json()).data[0] : null;
+        if (x && ev.data.object.refunded) await env.LICENSES.put('rev:' + (await keyId(x.id)), '1'); // fully refunded only
       }
       return new Response('ok');
     }

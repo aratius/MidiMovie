@@ -62,7 +62,7 @@ URL は **dashboard.stripe.com** のものを使います。画面の文言は S
 ## 4. 本番用の制限付きキー
 
 1. 🌐 https://dashboard.stripe.com/apikeys (本番モード)→ **Create secret key**
-2. 権限の選択で **Custom permissions** → 左のリストの **Checkout Sessions** → **Read** にする(他は全部 None)
+2. 権限の選択で **Custom permissions** → 次の4つだけ設定(他は全部 None): **Checkout Sessions = Read**、**PaymentIntents = Read**、**Charges = Read**、**Refunds = Write**(admin.html の購入履歴と返金に必要)
 3. 名前: `midimovie-license-live` → 作成
 4. 表示された **`rk_live_…`** をコピー(一度しか出ません。チャットには貼らない)
 
