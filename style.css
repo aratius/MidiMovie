@@ -417,16 +417,16 @@ a.btn{text-decoration:none}
 
 /* ---- Pro theme: obsidian + gold, applied only to licensed users (html.is-pro) ---- */
 html.is-pro{
-  --bg:#07070a; --panel:#101015; --panel2:#17171e; --line:#26232a; --line2:#3a3426;
-  --accent:#e9c46a; --accent2:#fff0b8; --text:#f1eee6; --muted:#9a96a3;
+  --bg:#07070a; --panel:#101015; --panel2:#17171e; --line:#26232a; --line2:#35312a;
+  --accent:#c4a661; --accent2:#e3d3a6; --text:#f1eee6; --muted:#9a96a3;
 }
-html.is-pro body{background:radial-gradient(1200px 520px at 50% -180px,rgba(233,196,106,.10),transparent 70%),var(--bg)}
-html.is-pro .btn.primary{background:linear-gradient(180deg,#f6dc94,#d9b050);border-color:#caa347;color:#1c1405;box-shadow:0 0 0 1px rgba(255,240,184,.18) inset,0 4px 14px rgba(233,196,106,.18)}
-html.is-pro .btn.primary:hover{background:linear-gradient(180deg,#ffe8a8,#e3bb5b)}
-html.is-pro .btn.primary.ibtn svg{stroke:#1c1405}
-html.is-pro .logo{fill:var(--accent);filter:drop-shadow(0 0 6px rgba(233,196,106,.45))}
+html.is-pro body{background:radial-gradient(1200px 520px at 50% -180px,rgba(196,166,97,.07),transparent 70%),var(--bg)}
+html.is-pro .btn.primary{background:linear-gradient(180deg,#d6bf86,#b39654);border-color:#a48a4c;color:#1a1409;box-shadow:0 0 0 1px rgba(227,211,166,.12) inset,0 3px 10px rgba(196,166,97,.12)}
+html.is-pro .btn.primary:hover{background:linear-gradient(180deg,#e0cb94,#bfa15f)}
+html.is-pro .btn.primary.ibtn svg{stroke:#1a1409}
+html.is-pro .logo{fill:var(--accent);filter:drop-shadow(0 0 5px rgba(196,166,97,.3))}
 html.is-pro .top{position:relative}
-html.is-pro .top::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(233,196,106,.55),transparent)}
-html.is-pro .pro-badge{background:linear-gradient(135deg,#fff0b8,#e9c46a 45%,#b8892b);color:#241a06;box-shadow:0 0 10px rgba(233,196,106,.45);border:0;letter-spacing:.14em}
-html.is-pro .pro-btn.on{color:#241a06;background:linear-gradient(135deg,#fff0b8,#e9c46a 55%,#b8892b);border-color:transparent;box-shadow:0 0 12px rgba(233,196,106,.35)}
-html.is-pro .banner{background:linear-gradient(90deg,#d9b050,#f6dc94);color:#1c1405}
+html.is-pro .top::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(196,166,97,.4),transparent)}
+html.is-pro .pro-badge{background:linear-gradient(135deg,#e3d3a6,#c4a661 50%,#9a7e3f);color:#1f180a;box-shadow:0 0 8px rgba(196,166,97,.28);border:0;letter-spacing:.14em}
+html.is-pro .pro-btn.on{color:#1f180a;background:linear-gradient(135deg,#e3d3a6,#c4a661 55%,#9a7e3f);border-color:transparent;box-shadow:0 0 8px rgba(196,166,97,.25)}
+html.is-pro .banner{background:linear-gradient(90deg,#b39654,#d6bf86);color:#1a1409}
