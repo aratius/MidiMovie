@@ -103,7 +103,7 @@
   function fill() {
     const pro = isPro();
     $('#proWhy').hidden = !why || pro; $('#proWhy').textContent = why ? tr('pro.why', { feature: why }) : '';
-    const ul = $('#proList'); ul.innerHTML = ''; ['pro.f1', 'pro.f2', 'pro.f3', 'pro.f4', 'pro.f5'].forEach(k => { const li = document.createElement('li'); li.textContent = tr(k); ul.appendChild(li); });
+    const ul = $('#proList'); ul.innerHTML = ''; ['pro.f1', 'pro.f2', 'pro.f3', 'pro.f4', 'pro.f6', 'pro.f5'].forEach(k => { const li = document.createElement('li'); li.textContent = tr(k); ul.appendChild(li); });
     $('#proPrice').textContent = priceNow() ? tr('pro.price', { price: priceNow() }) : '';
     const buy = $('#proBuy'); buy.textContent = tr('pro.buy'); buy.hidden = !cfg.checkoutUrl || pro; if (cfg.checkoutUrl) buy.href = cfg.checkoutUrl;
     $('#proKeyH').textContent = tr('pro.haveKey'); $('#proKey').placeholder = tr('pro.keyPh'); $('#proAct').textContent = tr('pro.activate');

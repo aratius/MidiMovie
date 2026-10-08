@@ -237,8 +237,11 @@
     E.id = 'pending'; E.sel.clear(); E.hist = []; E.redo = []; fitRoll();
     updateUI();
   }
+  const FREE_LAYERS = 2; /* free: 2 layers; the 3rd opens the Pro dialog (a take waiting to be kept is not lost) */
+  const layerOk = (adding) => !window.Pro || Pro.isPro() || S.layers.length + (adding || 1) <= FREE_LAYERS || (Pro.open('layers'), false);
   function keepTake() {
     const p = S.pending; if (!p) return;
+    if (!layerOk(1)) return;
     T.pause();
     p.num = S.nextNum++; p.color = COLORS[(p.num - 1) % COLORS.length]; p.id = 'l' + p.num + '_' + Date.now();
     disposeLayer(p);
@@ -443,6 +446,7 @@
     menuEl = m; document.addEventListener('pointerdown', onDocDown, true);
   }
   function duplicateLayer(l) {
+    if (!layerOk(1)) return;
     const c = JSON.parse(JSON.stringify(layerData(l))); c.num = S.nextNum++; c.id = 'l' + c.num + '_' + Date.now();
     c.name = layerLabel(l) + ' ' + t('layer.copy'); c.color = COLORS[(c.num - 1) % COLORS.length];
     S.layers.push(buildLayer(c, S.layers.length)); refreshAllChannels(); renderLayers();
@@ -955,6 +959,7 @@
     return Synth.renderOffline(layers, { sampleRate: sr || 48000, length: Math.max(T.hasVideo ? T.duration : 0, end) });
   }
   function importedLayers(list) {
+    if (!layerOk(list.length)) { const room = window.Pro ? Math.max(0, FREE_LAYERS - S.layers.length) : 0; list = list.slice(0, room); if (!list.length) return; } /* free: import what fits, the dialog is already open */
     list.forEach(x => {
       const num = S.nextNum++;
       S.layers.push(buildLayer({ id: 'l' + num + '_' + Date.now() + Math.random().toString(36).slice(2, 4), num, name: x.name || null, color: COLORS[(num - 1) % COLORS.length], notes: x.notes, bends: x.bends || [], params: S.inst.params, presetId: S.inst.presetId }, S.layers.length));
