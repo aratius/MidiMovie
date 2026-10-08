@@ -36,3 +36,10 @@ python3 -m http.server 8000   # → http://localhost:8000/
 ```
 
 Chrome / Edge / Opera 推奨 (Web MIDI対応)。
+
+
+## Pro, licenses and legal pages
+
+- Free: recording, layers, note editor, markers, presets, WAV / MIDI export, backups. **Pro** (one-time purchase via Stripe): Sampler, Audio → MIDI, MP4 export, stems export. One key works on up to 3 devices.
+- Keys are signed (ECDSA) and verified in the browser; `tools/stripe-license-worker.js` (Cloudflare Worker + KV) issues keys after a Stripe Checkout, registers devices and handles revocations. Free keys for friends: `admin.html`. Setup: `docs/GO-LIVE.md`, `docs/PRO-SETUP.md`.
+- Legal pages (EN / 中文 / 日本語): `terms.html`, `privacy.html`, `tokushoho.html`.

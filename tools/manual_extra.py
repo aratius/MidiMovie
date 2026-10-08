@@ -28,6 +28,13 @@ X = {
    '<b>Slices (auto chop)</b>: for long recordings with many sounds, switch the mode to <i>Slices</i>. <b>Auto chop</b> finds the starts of the sounds (raise <b>Sensitivity</b> for more cuts) and every piece gets its own key, starting at <b>First slice on</b>; those keys are marked with an orange bar on the keyboard. Tap the waveform to add a cut, tap a cut to remove it, drag to move it. <b>Play whole slice</b> lets each piece ring out even on a short tap; <b>Split evenly</b> divides by count.',
    'Attack, Release, Tone, Reverb and Level shape the result. A sampler sound works like any other: record with it and each layer remembers its sample.',
    'Samples are stored in your browser and shared by all projects. Backups (ZIP) include the samples a project uses.'])]),
+ pro=('MP4 export, Pro and licenses', [
+  ('ul', ['<b>Export video (MP4)</b> in the Export dialog replaces the soundtrack of your loaded video with your mix (loudness setting applied). The picture is copied without re-encoding, so quality and speed stay high. It needs a video that is loaded in the project.',
+   '<b>Free:</b> recording, layers, note editor, markers, presets, WAV mix export, MIDI export / import and backups. <b>Pro</b> (one-time purchase, no subscription) adds the Sampler (including auto chop), Audio → MIDI, MP4 export and stems export. Pro features show a PRO tag.',
+   '<b>Buy:</b> press <b>Upgrade to Pro</b> at the top. After paying you land on a page with your license key and an <i>Unlock Pro</i> button. Keep that page: the key is also what you paste into the Pro dialog on another device.',
+   '<b>Devices:</b> one key works on up to 3 devices (browsers). To move it, open the Pro dialog on the old device and choose to deactivate it; the slot is freed.',
+   '<b>Refunds:</b> within 14 days of purchase, no reason needed. Contact the address on the Legal notice page; the key is then switched off.',
+   'Pro unlocked? The page title shows <b>Pro</b>, a gold PRO badge appears next to the logo and the interface turns gold.'])]),
  export=('Exporting audio and MIDI', [
   ('img', 'export-en.png', 'The Export dialog.'),
   ('ul', ['Press <b>Export</b> (top right). <b>Export mix (WAV)</b> renders all audible layers (Mute/Solo and volumes respected) as a 16-bit stereo WAV at 44.1 or 48 kHz.',
@@ -74,6 +81,13 @@ X = {
    '<b>切片（自动切分）</b>：对包含许多声音的长录音，把模式切换为 <i>切片</i>。<b>自动切分</b> 会找出各声音的起点（提高 <b>灵敏度</b> 切点更多），每一段对应一个琴键，从 <b>第一个切片的琴键</b> 开始；这些琴键在键盘上有橙色标记。点击波形添加切点，点击切点删除，拖动移动。<b>播放完整切片</b> 让每段在短按时也完整播放；<b>均分</b> 按数量等分。',
    '起音、释音、音色明暗、混响和电平可调整效果。采样器音色与其他音色用法相同：用它录音，每个图层都会记住自己的采样。',
    '采样保存在你的浏览器中，所有项目共用。备份 (ZIP) 会包含项目所用的采样。'])]),
+ pro=('MP4 导出、Pro 与授权', [
+  ('ul', ['导出对话框中的 <b>导出视频 (MP4)</b> 会用您的混音（已应用响度设置）替换已载入视频的音轨。画面直接复制、不重新编码，因此画质与速度都有保证。需要项目中已载入视频。',
+   '<b>免费：</b>录音、图层、音符编辑器、标记、预设、WAV 混音导出、MIDI 导出 / 导入与备份。<b>Pro</b>（一次性购买，无订阅）增加采样器（含自动切片）、音频 → MIDI、MP4 导出和分轨导出。Pro 功能带有 PRO 标记。',
+   '<b>购买：</b>点击顶部的 <b>升级到 Pro</b>。付款后会进入显示授权密钥和 <i>启用 Pro</i> 按钮的页面。请保存该页面：在另一台设备上，把密钥粘贴到 Pro 对话框即可。',
+   '<b>设备数量：</b>一个密钥最多可在 3 台设备（浏览器）上使用。要更换，请在旧设备的 Pro 对话框中选择停用，即可释放名额。',
+   '<b>退款：</b>购买后 14 天内无需理由。请通过“特定商业交易法标示”页面的联系方式联系，密钥随后会被停用。',
+   '启用 Pro 后，页面标题会显示 <b>Pro</b>，徽标旁出现金色 PRO 徽章，界面变为金色。'])]),
  export=('导出音频与 MIDI', [
   ('img', 'export-zh.png', '导出对话框。'),
   ('ul', ['点击右上角的 <b>导出</b>。<b>导出混音 (WAV)</b> 会把所有可听图层（遵循静音/独奏与音量）渲染为 16 位立体声 WAV，采样率 44.1 或 48 kHz。',
@@ -119,6 +133,13 @@ X = {
    '<b>スライス（自動チョップ）</b>: いろいろな音が入った長い録音は、モードを <i>スライス</i> に切り替えます。<b>自動チョップ</b> が音の頭を見つけて切り（<b>感度</b> を上げると切れ目が増えます）、各断片が <b>最初のスライスの鍵</b> から順に1鍵ずつ割り当たります。該当する鍵は鍵盤にオレンジの印が付きます。波形をタップで切れ目を追加、切れ目をタップで削除、ドラッグで移動。<b>最後まで鳴らす</b> をオンにすると短く押しても断片が最後まで鳴ります。<b>等分</b> は個数で等しく分けます。',
    'アタック、リリース、トーン、リバーブ、レベルで音を整えます。サンプラーの音も他の音色と同じ使い方で、録音すると各レイヤーが自分のサンプルを覚えています。',
    'サンプルはブラウザに保存され、全プロジェクトで共有されます。バックアップ (ZIP) にはプロジェクトが使うサンプルも含まれます。'])]),
+ pro=('MP4書き出し・Pro・ライセンス', [
+  ('ul', ['書き出しダイアログの <b>動画を書き出し (MP4)</b> は、読み込んだ動画の音声を、あなたのミックス（ラウドネス設定を反映）に差し替えます。映像は再エンコードせずにコピーするので、画質も速度も保たれます。プロジェクトに動画が読み込まれている必要があります。',
+   '<b>無料:</b> 録音、レイヤー、ノートエディタ、マーカー、プリセット、WAVミックス書き出し、MIDI書き出し・読み込み、バックアップ。<b>Pro</b>（買い切り・サブスクなし）では、サンプラー（自動チョップ含む）、音声 → MIDI、MP4書き出し、ステム書き出しが使えます。Pro の機能には PRO の印が付いています。',
+   '<b>購入:</b> 上部の <b>Pro にアップグレード</b> を押します。支払い後に、ライセンスキーと <i>Pro を有効にして開く</i> ボタンのあるページが表示されます。このページは保存しておいてください。別の端末では、キーを Pro ダイアログに貼ります。',
+   '<b>端末数:</b> 1つのキーは最大3台（ブラウザ）で使えます。移すときは、古い端末の Pro ダイアログで解除すると、枠が空きます。',
+   '<b>返金:</b> 購入後14日以内なら理由は問いません。特定商取引法の表記ページの連絡先にご連絡ください。返金後はキーが無効になります。',
+   'Pro が有効になると、ページのタイトルに <b>Pro</b> が付き、ロゴの横に金色の PRO バッジが出て、画面が金色になります。'])]),
  export=('音声とMIDIの書き出し', [
   ('img', 'export-ja.png', '書き出しダイアログ。'),
   ('ul', ['右上の <b>書き出し</b> を押します。<b>ミックスを書き出し (WAV)</b> は、聞こえている全レイヤー（ミュート/ソロと音量を反映）を16bitステレオWAV（44.1 / 48 kHz）にします。',
@@ -152,6 +173,6 @@ def patch(CONTENT):
             if b[0] == 'table': b[2].extend(x['roll_rows']); break
         S[2][1].append(('ul', [x['proj_extra']]))
         keys_tbl = ('table', S[9][1][0][1], x['keys'])
-        new = [S[0], S[1], S[2], S[3], S[4], S[5], S[6], x['slow'], x['sampler'], S[7], x['export'], x['backup'], (S[9][0], [keys_tbl]), S[10], S[11]]
+        new = [S[0], S[1], S[2], S[3], S[4], S[5], S[6], x['slow'], x['sampler'], S[7], x['export'], x['pro'], x['backup'], (S[9][0], [keys_tbl]), S[10], S[11]]
         c['sections'] = [(f'{n}. {strip(s[0])}', s[1]) for n, s in enumerate(new, 1)]
         c['ver'] = c['ver'].replace('1.0', '2.0')

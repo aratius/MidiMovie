@@ -49,7 +49,7 @@ async function emailKey(env, to, name, key) {
   await fetch('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: env.FROM_EMAIL, to, subject: 'MidiMovie Pro license / ライセンスキー',
-      text: 'Thank you! Open this link to unlock Pro:\n' + link + '\n\nOr paste this key in the Pro dialog:\n' + key + '\n\nご購入ありがとうございます。上のリンクを開くだけで Pro が有効になります。' }),
+      text: 'Thank you! Open this link to unlock Pro:\n' + link + '\n\nOr paste this key in the Pro dialog (one key works on up to 3 devices):\n' + key + '\n\n---\nご購入ありがとうございます。上のリンクを開くだけで Pro が有効になります。キーは最大3台まで使えます。\n\n---\n感谢您的购买!打开上面的链接即可启用 Pro。也可将密钥粘贴到 Pro 对话框(一个密钥最多可在 3 台设备上使用)。' }),
   });
 }
 
