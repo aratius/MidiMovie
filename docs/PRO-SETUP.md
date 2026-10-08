@@ -46,3 +46,20 @@ This licence check protects honest buyers only; anyone can bypass client-side co
 4. 確認: `node tools/license-keys.mjs verify <キー>`
 
 `enforce:false` の間は全員が全機能を使えるので、キーが必要になるのは `enforce:true` にした後です。
+
+## Stripe で売る場合(Lemon Squeezy の代わり)
+
+Stripe にはライセンスキー機能がないので、`tools/stripe-license-worker.js`(Cloudflare Worker、無料枠)が購入後に署名付きキー(ギフトキーと同じ `MMF1.…`)を発行します。DB 不要・サイトは静的のままです。
+
+1. Stripe(まずテストモード)で商品「MidiMovie Pro」¥2,980 の **Payment Link** を作る。
+   - 完了後の動作: 「サイトにリダイレクト」→ `https://aratius.github.io/MidiMovie/thanks.html?session_id={CHECKOUT_SESSION_ID}`
+   - 「Let us handle it(Managed Payments)」を選ぶと税・不正対応は Stripe が負担(+3.5%)。Payment Link で使えるかは画面で確認。
+2. 制限付きキー(rk_…)を作る。権限は **Checkout Sessions の読み取りのみ**。チャットやリポジトリには貼らない。
+3. Worker をデプロイ: `wrangler deploy tools/stripe-license-worker.js --name midimovie-license` のあと
+   `wrangler secret put STRIPE_RAK` / `STRIPE_WEBHOOK_SECRET` / `GIFT_PRIVATE_PEM`(秘密鍵の中身)/ 任意で `RESEND_API_KEY`。
+   Vars: `SITE`, `ALLOW_ORIGIN=https://aratius.github.io`, `FROM_EMAIL`。
+4. Stripe の Webhook に `<worker-url>/webhook` を登録(`checkout.session.completed` と `checkout.session.async_payment_succeeded`)。
+5. `license-config.js` に `keyApi`(Worker の URL)、`giftPublicKey`、`checkoutUrl`(Payment Link)を設定。
+6. テストカード 4242 4242 4242 4242 で購入 → thanks ページでキー → Pro 有効、を確認してから本番キーに切り替え、`enforce:true`。
+
+返金したいときは、そのキーの id を `revoked` に追加します。
