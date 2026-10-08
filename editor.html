@@ -358,7 +358,10 @@
     <div class="modal-body">
       <section class="msec">
         <p class="muted small-text" data-i18n="aud.note"></p>
-        <label class="field"><span class="flabel" data-i18n="aud.range"></span>
+        <label class="field"><span class="flabel" data-i18n="aud.mode"></span>
+          <select id="aufMode"><option value="mono" data-i18n="aud.modeMono"></option><option value="poly" data-i18n="aud.modePoly"></option></select></label>
+        <p class="muted small-text" id="aufModeNote"></p>
+        <label class="field" id="aufRangeRow"><span class="flabel" data-i18n="aud.range"></span>
           <select id="aufRange"><option value="auto" data-i18n="aud.rangeAuto"></option><option value="low" data-i18n="aud.rangeLow"></option><option value="high" data-i18n="aud.rangeHigh"></option></select></label>
         <label class="field"><span class="flabel"><span data-i18n="aud.sens"></span> <b class="mono" id="aufSensVal"></b></span><input type="range" id="aufSens" min="0" max="1" step="0.01" value="0.5"></label>
         <label class="field"><span class="flabel"><span data-i18n="aud.min"></span> <b class="mono" id="aufMinVal"></b></span><input type="range" id="aufMin" min="40" max="300" step="5" value="80"></label>
@@ -408,6 +411,7 @@
 <script src="synth.js"></script>
 <script src="sampler.js"></script>
 <script src="pitch.js"></script>
+<script src="poly.js"></script>
 <script src="trim.js"></script>
 <script src="presets.js"></script>
 <script src="app.js"></script>

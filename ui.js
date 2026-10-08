@@ -128,14 +128,18 @@
   /* ---------- audio -> MIDI (monophonic melody) ---------- */
   const aufMsg = (txt, kind) => { const m = $('aufMsg'); m.hidden = !txt; m.textContent = txt || ''; m.className = 'result' + (kind ? ' ' + kind : ''); };
   const aufLabels = () => { $('aufSensVal').textContent = Math.round($('aufSens').value * 100) + '%'; $('aufMinVal').textContent = $('aufMin').value + ' ms'; };
+  const aufModeSync = () => { const poly = $('aufMode').value === 'poly'; $('aufRangeRow').hidden = poly; $('aufModeNote').textContent = t(poly ? 'aud.notePoly' : 'aud.noteMono'); aufMsg(''); };
+  $('aufMode').addEventListener('change', aufModeSync);
   $('aufSens').addEventListener('input', aufLabels); $('aufMin').addEventListener('input', aufLabels); aufLabels();
-  $('prjAudio').addEventListener('click', () => { $('dlgProject').close(); aufMsg(''); open('dlgAudio'); });
+  $('prjAudio').addEventListener('click', () => { $('dlgProject').close(); aufModeSync(); open('dlgAudio'); });
   async function audioToLayer(blob, name) {
     const prog = $('aufProg'), btns = [$('aufFileBtn'), $('aufVideo')]; btns.forEach(b => { b.disabled = true; }); aufMsg('');
     prog.hidden = false; prog.value = 0;
     try {
       let buf; try { buf = await Sampler.decode(blob); } catch (err) { aufMsg(t('aud.fail'), 'bad'); return; }
-      const maxMin = 10, r = await Pitch.analyze(buf, { range: $('aufRange').value, sens: parseFloat($('aufSens').value), minMs: parseFloat($('aufMin').value), maxSec: maxMin * 60 }, (p) => { prog.value = p; });
+      const poly = $('aufMode').value === 'poly', maxMin = poly ? 5 : 10, o = { range: $('aufRange').value, sens: parseFloat($('aufSens').value), minMs: parseFloat($('aufMin').value), maxSec: maxMin * 60 };
+      let r; try { r = await (poly ? Poly : Pitch).analyze(buf, o, (p) => { prog.value = p; }); }
+      catch (err) { console.error(err); aufMsg(poly && err && err.message === 'missing' ? t('aud.noEngine') : t('aud.fail'), 'bad'); return; }
       if (!r.notes.length) { aufMsg(t('aud.none'), 'bad'); return; }
       MM.importedLayers([{ name, notes: r.notes }]);
       const msg = t('aud.done', { name, n: r.notes.length, lo: noteName(r.lo), hi: noteName(r.hi) }) + (buf.duration > maxMin * 60 ? ' ' + t('aud.long', { m: maxMin }) : '');
