@@ -217,8 +217,8 @@ details.grp>summary::-webkit-details-marker{display:none}
 .proj-head{display:flex;flex-direction:column;gap:2px;min-width:0}
 .back{color:var(--muted);text-decoration:none;font-size:12px;font-weight:600}
 .back:hover{color:var(--accent2)}
-.proj-line{display:flex;align-items:center;gap:10px}
-.proj-name{font-size:18px;font-weight:700;background:transparent;border:1px solid transparent;border-radius:7px;padding:2px 8px;margin-left:-8px;width:min(46vw,380px)}
+.proj-line{display:flex;align-items:baseline;gap:10px}
+.proj-name{font-size:18px;font-weight:700;line-height:1.25;background:transparent;border:1px solid transparent;border-radius:7px;padding:2px 8px;margin-left:-8px;width:min(46vw,380px)}
 .proj-name:hover,.proj-name:focus{background:#0f1115;border-color:var(--line2)}
 .save-state{font-size:12px;color:var(--muted);white-space:nowrap}
 .save-state.ok{color:var(--ok)}
