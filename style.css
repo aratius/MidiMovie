@@ -414,3 +414,19 @@ a.btn{text-decoration:none}
 .pro-bar{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 40px 8px 16px;background:linear-gradient(90deg,#3b2f8f,#6c5ce7);color:#fff;font-size:13px;position:relative;flex-wrap:wrap;text-align:center}
 .pro-bar .btn{white-space:nowrap}.pro-bar-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:4px 8px;opacity:.8}
 .pro-btn.upgrade{background:var(--accent);color:#1a0d05;border-color:transparent}
+
+/* ---- Pro theme: obsidian + gold, applied only to licensed users (html.is-pro) ---- */
+html.is-pro{
+  --bg:#07070a; --panel:#101015; --panel2:#17171e; --line:#26232a; --line2:#3a3426;
+  --accent:#e9c46a; --accent2:#fff0b8; --text:#f1eee6; --muted:#9a96a3;
+}
+html.is-pro body{background:radial-gradient(1200px 520px at 50% -180px,rgba(233,196,106,.10),transparent 70%),var(--bg)}
+html.is-pro .btn.primary{background:linear-gradient(180deg,#f6dc94,#d9b050);border-color:#caa347;color:#1c1405;box-shadow:0 0 0 1px rgba(255,240,184,.18) inset,0 4px 14px rgba(233,196,106,.18)}
+html.is-pro .btn.primary:hover{background:linear-gradient(180deg,#ffe8a8,#e3bb5b)}
+html.is-pro .btn.primary.ibtn svg{stroke:#1c1405}
+html.is-pro .logo{fill:var(--accent);filter:drop-shadow(0 0 6px rgba(233,196,106,.45))}
+html.is-pro .top{position:relative}
+html.is-pro .top::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(233,196,106,.55),transparent)}
+html.is-pro .pro-badge{background:linear-gradient(135deg,#fff0b8,#e9c46a 45%,#b8892b);color:#241a06;box-shadow:0 0 10px rgba(233,196,106,.45);border:0;letter-spacing:.14em}
+html.is-pro .pro-btn.on{color:#241a06;background:linear-gradient(135deg,#fff0b8,#e9c46a 55%,#b8892b);border-color:transparent;box-shadow:0 0 12px rgba(233,196,106,.35)}
+html.is-pro .banner{background:linear-gradient(90deg,#d9b050,#f6dc94);color:#1c1405}
