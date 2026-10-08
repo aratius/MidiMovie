@@ -23,7 +23,8 @@ async function signKey(env, sessionId, name) {
 }
 
 async function getPaidSession(env, sessionId) {
-  if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sessionId)) return null;
+  const mode = /^rk_live_|^sk_live_/.test(env.STRIPE_RAK || '') ? 'live' : 'test'; // a live Worker never accepts test sessions
+  if (!new RegExp('^cs_' + mode + '_[A-Za-z0-9]+$').test(sessionId)) return null;
   const r = await fetch('https://api.stripe.com/v1/checkout/sessions/' + sessionId, { headers: { Authorization: 'Bearer ' + env.STRIPE_RAK } });
   if (!r.ok) return null;
   const s = await r.json();
