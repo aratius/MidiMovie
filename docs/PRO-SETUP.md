@@ -52,12 +52,12 @@ This licence check protects honest buyers only; anyone can bypass client-side co
 Stripe にはライセンスキー機能がないので、`tools/stripe-license-worker.js`(Cloudflare Worker、無料枠)が購入後に署名付きキー(ギフトキーと同じ `MMF1.…`)を発行します。DB 不要・サイトは静的のままです。
 
 1. Stripe(まずテストモード)で商品「MidiMovie Pro」¥2,980 の **Payment Link** を作る。
-   - 完了後の動作: 「サイトにリダイレクト」→ `https://aratius.github.io/MidiMovie/thanks.html?session_id={CHECKOUT_SESSION_ID}`
+   - 完了後の動作: 「サイトにリダイレクト」→ `https://midimovie.aualrxse.com/thanks.html?session_id={CHECKOUT_SESSION_ID}`
    - 「Let us handle it(Managed Payments)」を選ぶと税・不正対応は Stripe が負担(+3.5%)。Payment Link で使えるかは画面で確認。
 2. 制限付きキー(rk_…)を作る。権限は Checkout Sessions・PaymentIntents・Charges が Read、Refunds が Write。チャットやリポジトリには貼らない。
 3. Worker をデプロイ: `wrangler deploy tools/stripe-license-worker.js --name midimovie-license` のあと
    `wrangler secret put STRIPE_RAK` / `STRIPE_WEBHOOK_SECRET` / `GIFT_PRIVATE_PEM`(秘密鍵の中身)/ 任意で `RESEND_API_KEY`。
-   Vars: `SITE`, `ALLOW_ORIGIN=https://aratius.github.io`, `FROM_EMAIL`。
+   Vars: `SITE`, `ALLOW_ORIGIN=https://midimovie.aualrxse.com`, `FROM_EMAIL`。
 4. Stripe の Webhook に `<worker-url>/webhook` を登録(`checkout.session.completed` と `checkout.session.async_payment_succeeded`)。
 5. `license-config.js` に `keyApi`(Worker の URL)、`giftPublicKey`、`checkoutUrl`(Payment Link)を設定。
 6. テストカード 4242 4242 4242 4242 で購入 → thanks ページでキー → Pro 有効、を確認してから本番キーに切り替え、`enforce:true`。
@@ -66,11 +66,11 @@ Stripe にはライセンスキー機能がないので、`tools/stripe-license-
 
 ### 友達用キーを画面から発行する(admin.html)
 
-`https://aratius.github.io/MidiMovie/admin.html` を開き、管理パスワードでログイン → 名前と期限を選んで「キーを発行」→「メッセージをコピー」/「共有」。
+`https://midimovie.aualrxse.com/admin.html` を開き、管理パスワードでログイン → 名前と期限を選んで「キーを発行」→「メッセージをコピー」/「共有」。
 初回だけ Worker に管理パスワードを設定します(長いランダムな文字列を自分で決める):
 ```
 wrangler secret put ADMIN_TOKEN --name midimovie-license
-wrangler deploy tools/stripe-license-worker.js --name midimovie-license --compatibility-date 2026-10-01 --var ALLOW_ORIGIN:https://aratius.github.io --var SITE:https://aratius.github.io/MidiMovie/
+wrangler deploy tools/stripe-license-worker.js --name midimovie-license --compatibility-date 2026-10-01 --var ALLOW_ORIGIN:https://midimovie.aualrxse.com --var SITE:https://midimovie.aualrxse.com/
 ```
 秘密鍵は Worker の中にあり、ページには出ません。パスワードがないと発行できません。無効化は従来どおり `revoked` に id を追加します。
 

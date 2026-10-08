@@ -1,6 +1,6 @@
 // OPTIONAL. Only needed if the browser blocks calls from midimovie to api.lemonsqueezy.com (CORS).
 // Deploy as a free Cloudflare Worker, then put its URL in license-config.js as `proxy`. It forwards only the three licence endpoints.
-const ALLOWED_ORIGINS = ['https://aratius.github.io']; // add your own domain here
+const ALLOWED_ORIGINS = ['https://midimovie.aualrxse.com', 'https://aratius.github.io']; // add your own domain here
 const ALLOWED_PATHS = ['/v1/licenses/activate', '/v1/licenses/validate', '/v1/licenses/deactivate'];
 export default {
   async fetch(req) {

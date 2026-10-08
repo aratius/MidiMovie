@@ -14,7 +14,7 @@ URL は **dashboard.stripe.com** のものを使います。画面の文言は S
   cd ~/git/_Envs/_AI/MidiMovie
   git pull
   ```
-- [ ] 🌐 https://aratius.github.io/MidiMovie/terms.html / privacy.html / tokushoho.html が開く(どれも日本語の本文が出る)
+- [ ] 🌐 https://midimovie.aualrxse.com/terms.html / privacy.html / tokushoho.html が開く(どれも日本語の本文が出る)
 - [ ] 公開したい**連絡先メール**を決める(特商法・規約に載ります。個人の Gmail ではなく専用アドレスがおすすめ)
 
 ## 1. Stripe アカウントを本番で使えるようにする
@@ -25,7 +25,7 @@ URL は **dashboard.stripe.com** のものを使います。画面の文言は S
    - 事業形態: **個人事業主 / Individual**
    - 氏名・生年月日・住所(本人確認用。Stripe にだけ渡され、サイトには出ません)
    - 事業内容: `MidiMovie はブラウザで動画に MIDI で音楽をつけるツール。買い切りのソフトウェアライセンスを販売` / 商品: デジタル商品
-   - サイトURL: `https://aratius.github.io/MidiMovie/`
+   - サイトURL: `https://midimovie.aualrxse.com/`
    - 銀行口座(日本円の受取口座)
    - 本人確認書類のアップロードを求められたら従う
 4. 設定 → 「公開情報(Public details)」 で、**サポート用メール**と、カード明細に出る名称(`MIDIMOVIE` など)を入れる
@@ -53,9 +53,9 @@ URL は **dashboard.stripe.com** のものを使います。画面の文言は S
    - **Enable Managed Payments**: オン(カテゴリ対象外と出たら商品のカテゴリを選び直す)
    - **Collect customer names**: オン
    - Allow promotion codes: 任意(割引コードを使うならオン)
-   - 規約への同意: 規約 URL `https://aratius.github.io/MidiMovie/terms.html` が設定できるなら設定してオン
+   - 規約への同意: 規約 URL `https://midimovie.aualrxse.com/terms.html` が設定できるなら設定してオン
 4. **After payment(決済後)** → **Redirect customers to your website(自分のサイトにリダイレクト)**
-   - URL: `https://aratius.github.io/MidiMovie/thanks.html?session_id={CHECKOUT_SESSION_ID}`
+   - URL: `https://midimovie.aualrxse.com/thanks.html?session_id={CHECKOUT_SESSION_ID}`
    - `{CHECKOUT_SESSION_ID}` は波かっこも含めてそのまま
 5. **リンクを作成** → 出てきた `https://buy.stripe.com/…`(`test_` が**付かない**)を控える
 
@@ -84,7 +84,7 @@ URL は **dashboard.stripe.com** のものを使います。画面の文言は S
    ```
 2. 🖥 再デプロイ
    ```
-   wrangler deploy tools/stripe-license-worker.js --name midimovie-license --compatibility-date 2026-10-01 --var ALLOW_ORIGIN:https://aratius.github.io --var SITE:https://aratius.github.io/MidiMovie/
+   wrangler deploy tools/stripe-license-worker.js --name midimovie-license --compatibility-date 2026-10-01 --var ALLOW_ORIGIN:https://midimovie.aualrxse.com --var SITE:https://midimovie.aualrxse.com/
    ```
 3. ✅ これ以降、**テストの購入ではキーが出ません**(本番のキーは本番の購入だけを確認するため)
 
@@ -101,7 +101,7 @@ URL は **dashboard.stripe.com** のものを使います。画面の文言は S
    contactEmail: 'あなたの公開用メール',
    ```
    → `git add -A && git commit -m "Go live" && git push`
-3. 🌐 1〜2分待って https://aratius.github.io/MidiMovie/ を **強制リロード**(Mac: Cmd+Shift+R)
+3. 🌐 1〜2分待って https://midimovie.aualrxse.com/ を **強制リロード**(Mac: Cmd+Shift+R)
 
 ## 8. 本番の最終テスト(自分のカードで1回買って返金)
 

@@ -5,7 +5,7 @@ import asyncio, pathlib, html
 from playwright.async_api import async_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-URL = 'https://aratius.github.io/MidiMovie/'
+URL = 'https://midimovie.aualrxse.com/'
 
 def esc(s): return html.escape(s, quote=False)
 

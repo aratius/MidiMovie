@@ -4,8 +4,8 @@ main = "stripe-license-worker.js"
 compatibility_date = "2026-10-01"
 
 [vars]
-ALLOW_ORIGIN = "https://aratius.github.io"
-SITE = "https://aratius.github.io/MidiMovie/"
+ALLOW_ORIGIN = "https://midimovie.aualrxse.com,https://aratius.github.io"
+SITE = "https://midimovie.aualrxse.com/"
 DEVICE_LIMIT = "3"
 
 # Create once:  wrangler kv namespace create LICENSES   -> paste the printed id below

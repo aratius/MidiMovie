@@ -8,7 +8,7 @@
 //   ADMIN_TOKEN           password for admin.html (issuing free gift keys); pick a long random string
 //   RESEND_API_KEY        optional: emails the key to the buyer (otherwise only the success page shows it)
 // KV namespace binding LICENSES: device registry (limits how many devices one key can be active on) + server-side revocations.
-// Vars: DEVICE_LIMIT (default 3), SITE (e.g. https://aratius.github.io/MidiMovie/), FROM_EMAIL (optional), ALLOW_ORIGIN (https://aratius.github.io)
+// Vars: DEVICE_LIMIT (default 3), SITE (e.g. https://midimovie.aualrxse.com/), FROM_EMAIL (optional), ALLOW_ORIGIN (https://aratius.github.io)
 const enc = new TextEncoder();
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const hex = (buf) => [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -104,7 +104,8 @@ async function deviceCall(req, env, cors, action) {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
-    const cors = { 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Vary': 'Origin' };
+    const allow = String(env.ALLOW_ORIGIN || '*').split(',').map((x) => x.trim()), reqOrigin = req.headers.get('Origin') || '';
+    const cors = { 'Access-Control-Allow-Origin': allow.includes('*') ? '*' : allow.includes(reqOrigin) ? reqOrigin : allow[0], 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Vary': 'Origin' };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (url.pathname === '/key' && req.method === 'GET') { // success page calls this with ?session_id=cs_…
       const s = await getPaidSession(env, url.searchParams.get('session_id') || '');

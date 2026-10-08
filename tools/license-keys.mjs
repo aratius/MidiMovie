@@ -35,7 +35,7 @@ if (cmd === 'init') {
   const payload = b64u(JSON.stringify({ n: name, i: id, t: now, e: days > 0 ? Math.floor(now + days * 86400) : 0 }));
   const body = 'MMF1.' + payload;
   const sig = crypto.sign('sha256', Buffer.from(body), { key: loadPriv(), dsaEncoding: 'ieee-p1363' });
-  const key = body + '.' + b64u(sig), url = (process.env.MIDIMOVIE_URL || 'https://aratius.github.io/MidiMovie/') + 'editor.html#gift=' + key;
+  const key = body + '.' + b64u(sig), url = (process.env.MIDIMOVIE_URL || 'https://midimovie.aualrxse.com/') + 'editor.html#gift=' + key;
   const msg = name + ' さん、MidiMovie の Pro をプレゼントします!\nこのリンクを開くだけで有効になります:\n' + url + '\n(開けない場合は Pro ボタンに次のキーを貼ってください)\n' + key;
   console.log(msg + '\n\n— id ' + id + (days > 0 ? ', ' + days + '日で期限切れ' : ', 無期限') + '。無効にするには license-config.js の revoked に "' + id + '" を追加');
   for (const c of [['pbcopy'], ['wl-copy'], ['xclip', '-selection', 'clipboard'], ['clip']]) { const r = spawnSync(c[0], c.slice(1), { input: msg }); if (!r.error && r.status === 0) { console.log('✓ メッセージをクリップボードにコピーしました。そのまま LINE などに貼り付けてください'); break; } }

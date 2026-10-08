@@ -3,7 +3,7 @@
 MIDIキーボードで映像に合わせて演奏し、重ね録りして音声を書き出すブラウザツール。
 Score a video with a MIDI keyboard — record layered takes in real time and export the audio.
 
-**https://aratius.github.io/MidiMovie/**
+**https://midimovie.aualrxse.com/**
 
 ## 構成 / Structure
 

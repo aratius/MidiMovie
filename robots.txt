@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://aratius.github.io/MidiMovie/sitemap.xml
+Sitemap: https://midimovie.aualrxse.com/sitemap.xml
