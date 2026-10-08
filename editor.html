@@ -206,7 +206,7 @@
         <div class="tabs" role="tablist">
           <button class="tab" role="tab" id="tabBtnSimple" data-tab="simple" data-i18n="tab.simple"></button>
           <button class="tab" role="tab" id="tabBtnPro" data-tab="pro" data-i18n="tab.pro"></button>
-          <button class="tab" role="tab" id="tabBtnSampler" data-tab="sampler" data-i18n="tab.sampler"></button>
+          <button class="tab" role="tab" id="tabBtnSampler" data-pro data-tab="sampler" data-i18n="tab.sampler"></button>
         </div>
       </div>
       <div class="current-sound"><span class="muted" data-i18n="inst.current"></span> <b id="curSound"></b></div>
@@ -229,9 +229,9 @@
       <div id="tabSampler" hidden>
         <div class="muted small-text" data-i18n="smp.hint"></div>
         <div class="btnrow tight">
-          <button class="btn small" id="smpAdd" data-i18n="smp.add"></button>
-          <button class="btn small" id="smpMic" data-i18n="smp.mic"></button>
-          <button class="btn small" id="smpVideo" data-i18n="smp.video"></button>
+          <button class="btn small" id="smpAdd" data-pro data-i18n="smp.add"></button>
+          <button class="btn small" id="smpMic" data-pro data-i18n="smp.mic"></button>
+          <button class="btn small" id="smpVideo" data-pro data-i18n="smp.video"></button>
           <input type="file" id="smpFile" accept="audio/*,.wav,.mp3,.ogg,.m4a,.aac,.flac" multiple hidden>
         </div>
         <div class="smp-list" id="smpList"></div>
@@ -306,13 +306,13 @@
         <div class="result" id="expResult" hidden></div>
         <div class="btnrow">
           <button class="btn primary" id="expMix" data-i18n="exp.mix"></button>
-          <button class="btn" id="expStems" data-i18n="exp.stems"></button>
+          <button class="btn" id="expStems" data-pro data-i18n="exp.stems"></button>
         </div>
       </section>
       <section class="msec">
         <h3 data-i18n="exp.videoTitle"></h3>
         <p class="muted small-text" data-i18n="exp.videoNote"></p>
-        <div class="btnrow"><button class="btn primary" id="expVideo" data-i18n="exp.video"></button></div>
+        <div class="btnrow"><button class="btn primary" id="expVideo" data-pro data-i18n="exp.video"></button></div>
         <progress id="expVideoProg" max="1" value="0" hidden></progress>
         <div class="result" id="expVideoMsg" hidden></div>
       </section>
@@ -347,7 +347,7 @@
       <section class="msec">
         <h3 data-i18n="prj.audioIn"></h3>
         <p class="muted small-text" data-i18n="prj.audioNote"></p>
-        <div class="btnrow"><button class="btn" id="prjAudio" data-i18n="prj.audioBtn"></button></div>
+        <div class="btnrow"><button class="btn" id="prjAudio" data-pro data-i18n="prj.audioBtn"></button></div>
       </section>
       <section class="msec">
         <h3 data-i18n="prj.file"></h3>
@@ -411,6 +411,8 @@
 
 <script src="i18n.js"></script>
 <script src="save.js"></script>
+<script src="license-config.js"></script>
+<script src="pro.js"></script>
 <script src="db.js"></script>
 <script src="zip.js"></script>
 <script src="midi-file.js"></script>

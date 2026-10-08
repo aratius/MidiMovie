@@ -69,6 +69,7 @@
     finally { busy(false); }
   }
   async function exportStems() {
+    if (!Pro.require('stems')) return;
     const layers = MM.S.layers.filter(l => l.notes.length); if (!layers.length) { MM.toast(t('exp.nothing')); return; }
     const sr = parseInt($('expRate').value, 10); busy(true);
     try {
@@ -91,6 +92,7 @@
     MM.download(blob, name); MM.toast(t('exp.done', { name }));
   }
   async function exportVideo() {
+    if (!Pro.require('video')) return;
     const msg = (txt, kind) => { const m = $('expVideoMsg'); m.hidden = !txt; m.textContent = txt || ''; m.className = 'result' + (kind ? ' ' + kind : ''); };
     if (!MM.S.videoUrl) { msg(t('exp.videoNeed'), 'bad'); return; }
     const layers = MM.S.layers.filter(MM.isAudible).filter(l => l.notes.length); if (!layers.length) { MM.toast(t('exp.nothing')); return; }
@@ -151,7 +153,7 @@
   const aufModeSync = () => { const poly = $('aufMode').value === 'poly'; $('aufRangeRow').hidden = poly; $('aufModeNote').textContent = t(poly ? 'aud.notePoly' : 'aud.noteMono'); aufMsg(''); };
   $('aufMode').addEventListener('change', aufModeSync);
   $('aufSens').addEventListener('input', aufLabels); $('aufMin').addEventListener('input', aufLabels); aufLabels();
-  $('prjAudio').addEventListener('click', () => { $('dlgProject').close(); aufModeSync(); open('dlgAudio'); });
+  $('prjAudio').addEventListener('click', () => { if (!Pro.require('audio')) return; $('dlgProject').close(); aufModeSync(); open('dlgAudio'); });
   async function audioToLayer(blob, name) {
     const prog = $('aufProg'), btns = [$('aufFileBtn'), $('aufVideo')]; btns.forEach(b => { b.disabled = true; }); aufMsg('');
     prog.hidden = false; prog.value = 0;
@@ -304,6 +306,7 @@
   sc.addEventListener('pointerup', waveUp); sc.addEventListener('pointercancel', waveUp);
 
   async function chooseSample(id) {
+    if (!Pro.require('sampler')) return;
     await Sampler.ensure(id);
     const prev = cur(); let p;
     if (prev.sampleId === id) p = prev;
@@ -350,17 +353,18 @@
     }
     refreshSampler(); if (first) chooseSample(first);
   }
-  $('smpAdd').addEventListener('click', () => $('smpFile').click());
+  $('smpAdd').addEventListener('click', () => { if (Pro.require('sampler')) $('smpFile').click(); });
   $('smpFile').addEventListener('change', (e) => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) addFiles(fs); });
   let mic = null, micTimer = null;
   $('smpMic').addEventListener('click', async () => {
-    const btn = $('smpMic');
+    const btn = $('smpMic'); if (!mic && !Pro.require('sampler')) return;
     if (mic) { clearInterval(micTimer); const m = mic; mic = null; btn.textContent = t('smp.mic'); btn.classList.remove('rec-on'); try { const blob = await m.stop(); const id = await Sampler.add(blob, t('smp.micName') + ' ' + new Date().toLocaleTimeString().replace(/[: ]/g, '.'), 'mic.webm'); refreshSampler(); chooseSample(id); } catch (err) { console.error(err); MM.toast(t('smp.decodeFail', { name: 'mic' })); } return; }
     try { mic = await Sampler.startMic(); } catch (err) { MM.toast(t('smp.micDenied')); return; }
     const t0 = performance.now(); btn.classList.add('rec-on');
     micTimer = setInterval(() => { const s = (performance.now() - t0) / 1000; btn.textContent = '■ ' + t('smp.stop') + ' ' + s.toFixed(1) + ' s'; if (s >= 30) btn.click(); }, 100);
   });
   $('smpVideo').addEventListener('click', async () => {
+    if (!Pro.require('sampler')) return;
     if (!MM.S.videoUrl) { MM.toast(t('smp.noVideo')); return; }
     const btn = $('smpVideo'); btn.disabled = true; MM.toast(t('smp.extracting'));
     try { const blob = await (await fetch(MM.S.videoUrl)).blob(); const id = await Sampler.fromVideo(blob, (MM.S.videoName || 'Video') + ' (audio)'); refreshSampler(); chooseSample(id); }
