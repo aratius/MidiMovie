@@ -310,6 +310,13 @@
         </div>
       </section>
       <section class="msec">
+        <h3 data-i18n="exp.videoTitle"></h3>
+        <p class="muted small-text" data-i18n="exp.videoNote"></p>
+        <div class="btnrow"><button class="btn primary" id="expVideo" data-i18n="exp.video"></button></div>
+        <progress id="expVideoProg" max="1" value="0" hidden></progress>
+        <div class="result" id="expVideoMsg" hidden></div>
+      </section>
+      <section class="msec">
         <h3 data-i18n="exp.midiTitle"></h3>
         <p class="muted small-text" data-i18n="exp.midiNote"></p>
         <div class="btnrow"><button class="btn" id="expMidi" data-i18n="exp.midi"></button></div>
@@ -412,6 +419,7 @@
 <script src="synth.js"></script>
 <script src="sampler.js"></script>
 <script src="pitch.js"></script>
+<script src="video-export.js"></script>
 <script src="poly.js"></script>
 <script src="trim.js"></script>
 <script src="presets.js"></script>

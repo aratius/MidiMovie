@@ -46,9 +46,10 @@
   function refreshExport() {
     const has = MM.S.layers.some(l => l.notes.length);
     ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = !has; });
+    $('expVideo').disabled = !has || !MM.S.videoUrl; $('expVideoMsg').hidden = true;
     $('expResult').hidden = true; syncLoudUI();
   }
-  const busy = (on) => { ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = on || !MM.S.layers.some(l => l.notes.length); }); };
+  const busy = (on) => { ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = on || !MM.S.layers.some(l => l.notes.length); }); $('expVideo').disabled = on || !MM.S.videoUrl || !MM.S.layers.some(l => l.notes.length); };
   const baseName = () => MM.safeName(MM.S.videoName || MM.P.name || 'midimovie');
 
   async function exportWav(layers, label) {
@@ -89,6 +90,25 @@
     const name = baseName() + '-' + MM.safeName(label || 'midi') + '.mid';
     MM.download(blob, name); MM.toast(t('exp.done', { name }));
   }
+  async function exportVideo() {
+    const msg = (txt, kind) => { const m = $('expVideoMsg'); m.hidden = !txt; m.textContent = txt || ''; m.className = 'result' + (kind ? ' ' + kind : ''); };
+    if (!MM.S.videoUrl) { msg(t('exp.videoNeed'), 'bad'); return; }
+    const layers = MM.S.layers.filter(MM.isAudible).filter(l => l.notes.length); if (!layers.length) { MM.toast(t('exp.nothing')); return; }
+    const prog = $('expVideoProg'); busy(true); prog.hidden = false; prog.value = 0; msg('');
+    try {
+      const sr = parseInt($('expRate').value, 10), mode = expMode(), target = clamp(parseFloat($('expTarget').value) || -14, -40, -6);
+      msg(t('exp.rendering'));
+      const buf = await MM.renderAudio(layers, sr); Loudness.process(buf, mode, { target, ceilingDb: -1 });
+      const src = await (await fetch(MM.S.videoUrl)).blob();
+      const r = await VideoExport.mux(src, buf, (p) => { prog.value = p; msg(t('exp.videoWorking', { p: Math.round(p * 100) })); });
+      const name = baseName() + '-scored.mp4';
+      MM.download(r.blob, name); msg(t('exp.videoDone', { name, size: fmtMB(r.blob.size), codec: r.audioCodec.toUpperCase() }), 'ok');
+    } catch (err) {
+      console.error(err); const m = String(err && err.message || err);
+      msg(m === 'missing' ? t('exp.videoNoEngine') : m === 'unsupported' ? t('exp.videoUnsupported') : m === 'noaudiocodec' ? t('exp.videoNoCodec') : t('exp.videoFail'), 'bad');
+    } finally { prog.hidden = true; busy(false); }
+  }
+  $('expVideo').addEventListener('click', exportVideo);
   $('expMix').addEventListener('click', () => exportWav(MM.S.layers.filter(MM.isAudible), 'mix'));
   $('expStems').addEventListener('click', exportStems);
   $('expMidi').addEventListener('click', () => exportMidi(null, 'all'));
