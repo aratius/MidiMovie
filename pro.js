@@ -17,6 +17,7 @@
     try {
       const r = await fetch(cfg.keyApi.replace(/\/$/, '') + '/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, device: device() }) });
       const j = await r.json().catch(() => null);
+      if (r.status === 404 || (j && j.error === 'noserver')) return { ok: true, legacy: true }; /* Worker without device registry yet: keep working */
       if (!j || (r.status >= 500)) return { ok: false, error: 'network' };
       return j;
     } catch (e) { return { ok: false, error: 'network' }; }
