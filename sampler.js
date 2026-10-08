@@ -107,5 +107,5 @@
     return [Math.max(0, (a0 * W - 0.01 * sr) / sr), Math.min(b.duration, ((a1 + 1) * W + 0.08 * sr) / sr)];
   }
   const evenCuts = (id, n) => { const b = Synth.samples.get(id); if (!b || n < 2) return []; const r = []; for (let i = 1; i < n; i++) r.push(b.duration * i / n); return r; };
-  window.Sampler = { detect, evenCuts, activeRange, meta, list, refresh, ensure, ensureAll, add, remove, rename, fromVideo, startMic, peaks, name: (id) => (meta.get(id) || {}).name };
+  window.Sampler = { decode: decodeBlob, detect, evenCuts, activeRange, meta, list, refresh, ensure, ensureAll, add, remove, rename, fromVideo, startMic, peaks, name: (id) => (meta.get(id) || {}).name };
 })();

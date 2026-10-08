@@ -125,6 +125,33 @@
     } catch (err) { console.error(err); prjMsg(t('prj.midiBad'), 'bad'); }
   });
 
+  /* ---------- audio -> MIDI (monophonic melody) ---------- */
+  const aufMsg = (txt, kind) => { const m = $('aufMsg'); m.hidden = !txt; m.textContent = txt || ''; m.className = 'result' + (kind ? ' ' + kind : ''); };
+  const aufLabels = () => { $('aufSensVal').textContent = Math.round($('aufSens').value * 100) + '%'; $('aufMinVal').textContent = $('aufMin').value + ' ms'; };
+  $('aufSens').addEventListener('input', aufLabels); $('aufMin').addEventListener('input', aufLabels); aufLabels();
+  $('prjAudio').addEventListener('click', () => { $('dlgProject').close(); aufMsg(''); open('dlgAudio'); });
+  async function audioToLayer(blob, name) {
+    const prog = $('aufProg'), btns = [$('aufFileBtn'), $('aufVideo')]; btns.forEach(b => { b.disabled = true; }); aufMsg('');
+    prog.hidden = false; prog.value = 0;
+    try {
+      let buf; try { buf = await Sampler.decode(blob); } catch (err) { aufMsg(t('aud.fail'), 'bad'); return; }
+      const maxMin = 10, r = await Pitch.analyze(buf, { range: $('aufRange').value, sens: parseFloat($('aufSens').value), minMs: parseFloat($('aufMin').value), maxSec: maxMin * 60 }, (p) => { prog.value = p; });
+      if (!r.notes.length) { aufMsg(t('aud.none'), 'bad'); return; }
+      MM.importedLayers([{ name, notes: r.notes }]);
+      const msg = t('aud.done', { name, n: r.notes.length, lo: noteName(r.lo), hi: noteName(r.hi) }) + (buf.duration > maxMin * 60 ? ' ' + t('aud.long', { m: maxMin }) : '');
+      aufMsg(msg, 'ok'); MM.toast(t('aud.done', { name, n: r.notes.length, lo: noteName(r.lo), hi: noteName(r.hi) }));
+      setTimeout(() => { if ($('dlgAudio').open) $('dlgAudio').close(); }, 900);
+    } catch (err) { console.error(err); aufMsg(t('aud.fail'), 'bad'); }
+    finally { prog.hidden = true; btns.forEach(b => { b.disabled = false; }); }
+  }
+  $('aufFileBtn').addEventListener('click', () => $('aufFile').click());
+  $('aufFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) audioToLayer(f, f.name.replace(/\.[^.]+$/, '')); });
+  $('aufVideo').addEventListener('click', async () => {
+    if (!MM.S.videoUrl) { aufMsg(t('aud.noVideo'), 'bad'); return; }
+    try { const blob = await (await fetch(MM.S.videoUrl)).blob(); await audioToLayer(blob, (MM.S.videoName || 'Video').replace(/\.[^.]+$/, '') + ' (melody)'); }
+    catch (err) { console.error(err); aufMsg(t('aud.fail'), 'bad'); }
+  });
+
   /* ---------- sampler ---------- */
   const sc = $('smpWave'), sg = sc.getContext('2d');
   let waveId = null, wavePeaks = null, drag = null;

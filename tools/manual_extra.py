@@ -39,6 +39,7 @@ X = {
  backup=('Backups, MIDI import, offline use and touch', [
   ('ul', ['<b>Project → Export backup (ZIP)</b> bundles the project, its video and its samples into one file. <b>Restore from backup</b> (in that dialog, or <i>Import backup / file</i> on the project list) creates a new project from it — ideal for another computer or a safe copy. Every project card also has a <b>Backup</b> button.',
    '<b>Project → Import .mid</b> adds the tracks of a MIDI file as new layers using the current instrument (markers are imported too).',
+   '<b>Project → Audio → MIDI</b> turns a recorded melody (singing, humming, a single instrument or bass line) into notes on a new layer. Set the pitch range, sensitivity and shortest note, then choose an audio file or use the video’s audio. It tracks one note at a time, so chords and full mixes will not convert well; tidy the result in the note editor.',
    '<b>Install as an app:</b> use the install icon in Chrome / Edge’s address bar, or “Add to Home Screen” on a tablet. After one online visit the app also works offline.',
    '<b>Touch screens:</b> the on-screen keyboard supports several fingers and sliding between keys; touching nearer the bottom of a key plays louder. On narrow screens it shows three octaves with ‹ › buttons to move.',
    'The keyboard icon at the top right lists every shortcut (or press <b>?</b>).'])]),
@@ -84,6 +85,7 @@ X = {
  backup=('备份、MIDI 导入、离线使用与触屏', [
   ('ul', ['<b>项目 → 导出备份 (ZIP)</b> 把项目、视频和采样打包成一个文件。<b>从备份恢复</b>（在该对话框中，或在项目列表的 <i>导入备份 / 文件</i>）会据此创建新项目——适合换电脑或留作安全副本。每张项目卡片上也有 <b>备份</b> 按钮。',
    '<b>项目 → 导入 .mid</b> 会把 MIDI 文件的各音轨作为新图层加入，使用当前乐器（标记也会一并导入）。',
+   '<b>项目 → 音频 → MIDI</b> 可把录好的旋律（演唱、哼唱、单一乐器或贝斯线）转成新图层上的音符。先设置音高范围、灵敏度和最短音符，再选择音频文件或使用视频的音频。它一次只识别一个音，和弦与完整混音无法很好地转换；请在音符编辑器中整理结果。',
    '<b>安装为应用：</b>在 Chrome / Edge 的地址栏点击安装图标，或在平板上选择“添加到主屏幕”。联网访问一次后，也可以离线使用。',
    '<b>触屏：</b>屏幕琴键支持多指同时按下和在琴键间滑动；触摸琴键越靠下，声音越响。在窄屏上显示三个八度，并有 ‹ › 按钮移动范围。',
    '右上角的键盘图标会列出所有快捷键（或按 <b>?</b>）。'])]),
@@ -128,6 +130,7 @@ X = {
  backup=('バックアップ・MIDI読み込み・オフライン・タッチ操作', [
   ('ul', ['<b>プロジェクト → バックアップを書き出し (ZIP)</b> は、プロジェクト・映像・サンプルを1つのファイルにまとめます。<b>バックアップから復元</b>（このダイアログ、または一覧の <i>バックアップ / ファイルを読み込む</i>）で新しいプロジェクトとして作られます。別のPCへの移動や安全なコピーに便利です。各プロジェクトカードにも <b>バックアップ</b> ボタンがあります。',
    '<b>プロジェクト → .mid を読み込む</b> は、MIDIファイルのトラックを現在の楽器で新しいレイヤーとして追加します（マーカーも取り込み）。',
+   '<b>プロジェクト → 音声 → MIDI</b> は、録音したメロディ（歌、鼻歌、単音の楽器、ベースライン）を新しいレイヤーのノートに変換します。音域・感度・最短ノートを決めてから、音声ファイルか映像の音声を選びます。同時に1音ずつ追う方式なので、和音や完成したミックスはうまく変換できません。結果はノートエディタで整えてください。',
    '<b>アプリとしてインストール:</b> Chrome / Edge のアドレスバーのインストールアイコン、またはタブレットの「ホーム画面に追加」を使います。一度オンラインで開けば、オフラインでも動きます。',
    '<b>タッチ画面:</b> 画面の鍵盤は複数の指での同時押しや、鍵の間のスライドに対応します。鍵の下側を触るほど強く鳴ります。狭い画面では3オクターブ表示で、‹ › ボタンで移動します。',
    '右上のキーボードのアイコンでショートカット一覧を表示できます（<b>?</b> キーでも可）。'])]),
