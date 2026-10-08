@@ -45,11 +45,12 @@
   syncLoudUI();
   function refreshExport() {
     const has = MM.S.layers.some(l => l.notes.length);
-    ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = !has; });
-    $('expVideo').disabled = !has || !MM.S.videoUrl; $('expVideoMsg').hidden = true;
+    ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = !has && !(id === 'expStems' && proLocked()); });
+    $('expVideo').disabled = (!has || !MM.S.videoUrl) && !proLocked(); $('expVideoMsg').hidden = true;
     $('expResult').hidden = true; syncLoudUI();
   }
-  const busy = (on) => { ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = on || !MM.S.layers.some(l => l.notes.length); }); $('expVideo').disabled = on || !MM.S.videoUrl || !MM.S.layers.some(l => l.notes.length); };
+  const proLocked = () => document.documentElement.classList.contains('not-pro'); /* free users can still click Pro actions: the click opens the upgrade dialog */
+  const busy = (on) => { ['expMix', 'expStems', 'expMidi'].forEach(id => { $(id).disabled = on || (!MM.S.layers.some(l => l.notes.length) && !(id === 'expStems' && proLocked())); }); $('expVideo').disabled = on || ((!MM.S.videoUrl || !MM.S.layers.some(l => l.notes.length)) && !proLocked()); };
   const baseName = () => MM.safeName(MM.S.videoName || MM.P.name || 'midimovie');
 
   async function exportWav(layers, label) {

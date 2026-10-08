@@ -411,3 +411,6 @@ a.btn{text-decoration:none}
 
 .pro-badge{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;background:#6c5ce7;color:#fff;font:700 11px/1.6 system-ui,sans-serif;letter-spacing:.08em;vertical-align:middle}
 .brand .logo-link+.pro-badge{margin:0 6px 0 -2px}
+.pro-bar{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 40px 8px 16px;background:linear-gradient(90deg,#3b2f8f,#6c5ce7);color:#fff;font-size:13px;position:relative;flex-wrap:wrap;text-align:center}
+.pro-bar .btn{white-space:nowrap}.pro-bar-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:4px 8px;opacity:.8}
+.pro-btn.upgrade{background:var(--accent);color:#1a0d05;border-color:transparent}

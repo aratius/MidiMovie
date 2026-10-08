@@ -100,7 +100,31 @@
     document.title = document.title.replace(/ Pro$/, '') + (on ? ' Pro' : '');
     const h1 = document.querySelector('.home h1'); if (h1) { const b = h1.querySelector('.pro-badge'); if (on && !b) { const e = document.createElement('span'); e.className = 'pro-badge'; e.textContent = 'PRO'; h1.appendChild(e); } else if (!on && b) b.remove(); }
     const ll = document.querySelector('.brand .logo-link'); if (ll) { const b = ll.parentNode.querySelector('.pro-badge'); if (on && !b) { const e = document.createElement('span'); e.className = 'pro-badge'; e.textContent = 'PRO'; ll.after(e); } else if (!on && b) b.remove(); }
-    if (btn) { btn.textContent = isPro() ? 'Pro ✓' : 'Pro'; btn.classList.toggle('on', isPro()); }
+    if (btn) { btn.textContent = isPro() ? 'Pro ✓' : tr('pro.upgrade'); btn.classList.toggle('on', isPro()); btn.classList.toggle('upgrade', !isPro()); }
+    syncBar();
+  }
+  /* upgrade funnel: a dismissible top bar and an occasional dialog, each shown at most once every 5 days */
+  const EVERY = 5 * DAY, K_BAR = 'midimovie.proBar', K_POP = 'midimovie.proPop';
+  const seen = (k) => { try { return +localStorage.getItem(k) || 0; } catch (e) { return 0; } };
+  const mark = (k) => { try { localStorage.setItem(k, String(Date.now())); } catch (e) { /* ignore */ } };
+  let bar = null;
+  function syncBar() {
+    const want = cfg.enforce && !licensed() && Date.now() - seen(K_BAR) > EVERY;
+    if (!want) { if (bar) { bar.remove(); bar = null; } return; }
+    if (!bar) {
+      bar = document.createElement('div'); bar.id = 'proBar'; bar.className = 'pro-bar';
+      bar.innerHTML = '<span class="pro-bar-t"></span><button type="button" class="btn small primary pro-bar-go"></button><button type="button" class="pro-bar-x"></button>';
+      bar.querySelector('.pro-bar-go').addEventListener('click', () => open(''));
+      bar.querySelector('.pro-bar-x').addEventListener('click', () => { mark(K_BAR); syncBar(); });
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+    bar.querySelector('.pro-bar-t').textContent = tr('pro.bar', { price: cfg.price || '' });
+    bar.querySelector('.pro-bar-go').textContent = tr('pro.barBtn');
+    const x = bar.querySelector('.pro-bar-x'); x.textContent = '×'; x.title = tr('pro.barClose'); x.setAttribute('aria-label', tr('pro.barClose'));
+  }
+  function maybePopup() { /* editor only, after the person has had a moment to look around */
+    if (!cfg.enforce || licensed() || !document.getElementById('btnExport') || Date.now() - seen(K_POP) < EVERY) return;
+    setTimeout(() => { if (licensed() || document.querySelector('dialog[open]')) return; mark(K_POP); open(''); }, 45000);
   }
   async function fromLink() {
     const m = /[#&]gift=([\w.-]+)/.exec(location.hash); if (!m) return;
@@ -116,7 +140,8 @@
     if (!cfg.enforce) return;
     const host = document.querySelector('.top-actions') || document.getElementById('langSwitch') && document.getElementById('langSwitch').parentNode, ex = document.getElementById('btnExport') || document.getElementById('langSwitch');
     if (host) { btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn small pro-btn'; btn.id = 'btnPro'; btn.addEventListener('click', () => open('')); host.insertBefore(btn, ex || host.firstChild); }
-    refresh(); recheck();
+    refresh(); recheck(); maybePopup();
+    if (window.I18N && I18N.onChange) I18N.onChange(() => refresh());
   }
   window.Pro = { cfg, isPro, licensed, require, open, activate, deactivate, refresh, recheck };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
