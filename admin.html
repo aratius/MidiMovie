@@ -2,58 +2,74 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>MidiMovie Admin</title>
 <style>
-:root{color-scheme:dark}body{font:16px/1.6 system-ui,-apple-system,"Hiragino Sans",sans-serif;max-width:520px;margin:0 auto;padding:24px 16px 64px;background:#111;color:#eee}
+:root{color-scheme:dark}body{font:16px/1.6 system-ui,-apple-system,"Hiragino Sans","PingFang SC",sans-serif;max-width:520px;margin:0 auto;padding:24px 16px 64px;background:#111;color:#eee}
 h1{font-size:20px}label{display:block;margin:14px 0 4px;color:#aaa;font-size:13px}input,select{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #333;background:#1b1b1f;color:#eee;font-size:16px}
 button{padding:12px 18px;border-radius:8px;border:0;background:#6c5ce7;color:#fff;font-size:16px;font-weight:600;cursor:pointer}button.s{background:#2a2a30}button:disabled{opacity:.5}
-.row{display:flex;gap:8px;margin-top:14px}.row>*{flex:1}.out{margin-top:20px;padding:14px;border-radius:10px;background:#1b1b1f;word-break:break-all;font-size:13px}
+.row{display:flex;gap:8px;margin-top:14px}.row>*{flex:1}.out{margin-top:20px;padding:14px;border-radius:10px;background:#1b1b1f;word-break:break-all;font-size:13px;white-space:pre-wrap}
 .m{color:#999;font-size:13px}.err{color:#ff7675}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}td{padding:6px 4px;border-bottom:1px solid #2a2a30}
+.lg{float:right;display:flex;gap:6px}.lg button{padding:4px 10px;font-size:13px;background:#2a2a30;color:#ddd;font-weight:400}.lg button.on{background:#6c5ce7;color:#fff}
 </style></head><body>
-<h1>MidiMovie Pro ギフトキー発行</h1>
+<div class="lg" id="lg"></div>
+<h1 id="t1"></h1>
 <div id="login">
-  <label>管理パスワード(ADMIN_TOKEN)</label><input id="tok" type="password" autocomplete="current-password">
-  <label style="display:flex;gap:8px;align-items:center"><input id="rem" type="checkbox" style="width:auto"> この端末に保存する</label>
-  <div class="row"><button id="go">ログイン</button></div>
+  <label id="l_tok"></label><input id="tok" type="password" autocomplete="current-password">
+  <label style="display:flex;gap:8px;align-items:center"><input id="rem" type="checkbox" style="width:auto"> <span id="l_rem"></span></label>
+  <div class="row"><button id="go"></button></div>
 </div>
 <div id="app" hidden>
-  <label>友達の名前</label><input id="nm" placeholder="たろう" autocomplete="off">
-  <label>期限</label><select id="dy"><option value="0">無期限</option><option value="30">30日</option><option value="90">90日</option><option value="365">1年</option></select>
-  <div class="row"><button id="mk">キーを発行</button></div>
+  <label id="l_nm"></label><input id="nm" autocomplete="off">
+  <label id="l_dy"></label><select id="dy"><option value="0" data-k="d0"></option><option value="30" data-k="d30"></option><option value="90" data-k="d90"></option><option value="365" data-k="d365"></option></select>
+  <label id="l_ml"></label><select id="ml"><option value="ja">日本語</option><option value="en">English</option><option value="zh">中文</option></select>
+  <div class="row"><button id="mk"></button></div>
   <p class="err" id="er"></p>
   <div id="res" hidden>
     <div class="out" id="msg"></div>
-    <div class="row"><button class="s" id="cp">メッセージをコピー</button><button class="s" id="sh">共有…</button></div>
+    <div class="row"><button class="s" id="cp"></button><button class="s" id="sh"></button></div>
   </div>
-  <h2 style="font-size:15px;margin-top:32px">この端末で発行した履歴</h2>
-  <p class="m">無効にしたいキーの id を <code>license-config.js</code> の <code>revoked</code> に追加して push します。</p>
+  <h2 style="font-size:15px;margin-top:32px" id="t2"></h2>
+  <p class="m" id="hn"></p>
   <table id="hist"></table>
-  <div class="row"><button class="s" id="out">ログアウト</button></div>
+  <div class="row"><button class="s" id="out"></button></div>
 </div>
 <script src="license-config.js"></script>
 <script>
 (function(){
-  var $=function(i){return document.getElementById(i)},cfg=window.MM_LICENSE||{},api=(cfg.keyApi||'').replace(/\/$/,''),H='midimovie.adminHist',T='midimovie.adminTok',tok='';
+  var $=function(i){return document.getElementById(i)},cfg=window.MM_LICENSE||{},api=(cfg.keyApi||'').replace(/\/$/,''),H='midimovie.adminHist',T='midimovie.adminTok',tok='',last='';
+  var D={
+   ja:{title:'MidiMovie Pro ギフトキー発行',tok:'管理パスワード(ADMIN_TOKEN)',rem:'この端末に保存する',go:'ログイン',nm:'友達の名前',nmph:'たろう',dy:'期限',d0:'無期限',d30:'30日',d90:'90日',d365:'1年',ml:'メッセージの言語(友達向け)',mk:'キーを発行',cp:'メッセージをコピー',cpd:'コピーしました ✓',cpf:'長押しでコピーしてください',sh:'共有…',hist:'この端末で発行した履歴',hn:'無効にしたいキーの id を license-config.js の revoked に追加して push します。',none:'まだありません',out:'ログアウト',nokey:'keyApi が未設定です',bad:'パスワードが違います',fail:'発行に失敗しました',err:'エラー',unl:'無期限',days:'日',friend:'友達'},
+   en:{title:'MidiMovie Pro gift keys',tok:'Admin password (ADMIN_TOKEN)',rem:'Remember on this device',go:'Log in',nm:"Friend's name",nmph:'Taro',dy:'Expires',d0:'Never',d30:'30 days',d90:'90 days',d365:'1 year',ml:'Message language (for your friend)',mk:'Issue key',cp:'Copy message',cpd:'Copied ✓',cpf:'Long-press to copy',sh:'Share…',hist:'Issued on this device',hn:'To disable a key, add its id to revoked in license-config.js and push.',none:'None yet',out:'Log out',nokey:'keyApi is not set',bad:'Wrong password',fail:'Could not issue the key',err:'Error',unl:'Never',days:' days',friend:'friend'},
+   zh:{title:'MidiMovie Pro 赠送密钥',tok:'管理密码(ADMIN_TOKEN)',rem:'在此设备上保存',go:'登录',nm:'朋友的名字',nmph:'小明',dy:'有效期',d0:'永久',d30:'30天',d90:'90天',d365:'1年',ml:'消息语言(给朋友)',mk:'发放密钥',cp:'复制消息',cpd:'已复制 ✓',cpf:'请长按复制',sh:'分享…',hist:'此设备上的发放记录',hn:'如需停用密钥,请将其 id 加入 license-config.js 的 revoked 并推送。',none:'暂无',out:'退出登录',nokey:'未设置 keyApi',bad:'密码错误',fail:'发放失败',err:'错误',unl:'永久',days:'天',friend:'朋友'}};
+  var M={ja:function(n,l,k){return n+' さん、MidiMovie の Pro をプレゼントします!\nこのリンクを開くだけで有効になります:\n'+l+'\n(開けない場合は Pro ボタンに次のキーを貼ってください)\n'+k},
+         en:function(n,l,k){return 'Hi '+n+', here is a free MidiMovie Pro license for you!\nJust open this link to unlock it:\n'+l+'\n(If it does not open, paste this key into the Pro dialog)\n'+k},
+         zh:function(n,l,k){return n+',送你一份 MidiMovie Pro 授权!\n打开此链接即可启用:\n'+l+'\n(如无法打开,请将下面的密钥粘贴到 Pro 对话框)\n'+k}};
+  var lang='en';try{var s=localStorage.getItem('midimovie.lang');if(D[s])lang=s}catch(e){}
   function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
   function hist(){try{return JSON.parse(ls(H)||'[]')}catch(e){return[]}}
-  function drawHist(){var h=hist();$('hist').innerHTML=h.length?h.map(function(r){return '<tr><td>'+r.name.replace(/[<&]/g,'')+'</td><td>'+r.id+'</td><td>'+r.date+'</td><td>'+(r.days?r.days+'日':'無期限')+'</td></tr>'}).join(''):'<tr><td class="m">まだありません</td></tr>'}
+  function drawHist(){var d=D[lang],h=hist();$('hist').innerHTML=h.length?h.map(function(r){return '<tr><td>'+r.name.replace(/[<&]/g,'')+'</td><td>'+r.id+'</td><td>'+r.date+'</td><td>'+(r.days?r.days+d.days:d.unl)+'</td></tr>'}).join(''):'<tr><td class="m">'+d.none+'</td></tr>'}
+  function apply(){var d=D[lang];document.documentElement.lang=lang==='zh'?'zh-Hans':lang;document.title='MidiMovie Admin';
+    $('t1').textContent=d.title;$('l_tok').textContent=d.tok;$('l_rem').textContent=d.rem;$('go').textContent=d.go;$('l_nm').textContent=d.nm;$('nm').placeholder=d.nmph;$('l_dy').textContent=d.dy;
+    document.querySelectorAll('#dy option').forEach(function(o){o.textContent=d[o.dataset.k]});$('l_ml').textContent=d.ml;$('mk').textContent=d.mk;$('cp').textContent=d.cp;$('sh').textContent=d.sh;
+    $('t2').textContent=d.hist;$('hn').textContent=d.hn;$('out').textContent=d.out;drawHist();
+    document.querySelectorAll('#lg button').forEach(function(b){b.classList.toggle('on',b.dataset.k===lang)})}
+  [['ja','日本語'],['en','English'],['zh','中文']].forEach(function(x){var b=document.createElement('button');b.textContent=x[1];b.dataset.k=x[0];b.onclick=function(){lang=x[0];ls('midimovie.lang',x[0]);$('ml').value=x[0];apply()};$('lg').appendChild(b)});
+  $('ml').value=lang;apply();
   function show(){$('login').hidden=true;$('app').hidden=false;drawHist()}
   var saved=ls(T);if(saved){tok=saved;show()}
   $('go').onclick=function(){tok=$('tok').value.trim();if(!tok)return;if($('rem').checked)ls(T,tok);show()};
   $('out').onclick=function(){ls(T,null);tok='';location.reload()};
-  var last='';
   $('mk').onclick=async function(){
-    $('er').textContent='';var name=$('nm').value.trim()||'friend',days=+$('dy').value;$('mk').disabled=true;
+    var d=D[lang];$('er').textContent='';var name=$('nm').value.trim()||d.friend,days=+$('dy').value,ml=$('ml').value;$('mk').disabled=true;
     try{
-      if(!api)throw new Error('keyApi が未設定です');
+      if(!api)throw new Error(d.nokey);
       var r=await fetch(api+'/issue',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({name:name,days:days})});
-      if(r.status===401){ls(T,null);throw new Error('パスワードが違います')}
-      var j=await r.json();if(!j.ok)throw new Error('発行に失敗しました');
-      last=name+' さん、MidiMovie の Pro をプレゼントします!\nこのリンクを開くだけで有効になります:\n'+j.link+'\n(開けない場合は Pro ボタンに次のキーを貼ってください)\n'+j.key;
-      $('msg').textContent=last;$('res').hidden=false;
+      if(r.status===401){ls(T,null);throw new Error(d.bad)}
+      var j=await r.json();if(!j.ok)throw new Error(d.fail);
+      last=M[ml](name,j.link,j.key);$('msg').textContent=last;$('res').hidden=false;
       var h=hist();h.unshift({name:name,id:j.id,days:days,date:new Date().toISOString().slice(0,10)});ls(H,JSON.stringify(h.slice(0,100)));drawHist();$('nm').value='';
       $('sh').hidden=!navigator.share;
-    }catch(e){$('er').textContent=e.message||'エラー'}finally{$('mk').disabled=false}
+    }catch(e){$('er').textContent=e.message||d.err}finally{$('mk').disabled=false}
   };
-  $('cp').onclick=async function(){try{await navigator.clipboard.writeText(last);$('cp').textContent='コピーしました ✓'}catch(e){$('cp').textContent='長押しでコピーしてください'}setTimeout(function(){$('cp').textContent='メッセージをコピー'},2000)};
+  $('cp').onclick=async function(){var d=D[lang];try{await navigator.clipboard.writeText(last);$('cp').textContent=d.cpd}catch(e){$('cp').textContent=d.cpf}setTimeout(function(){$('cp').textContent=D[lang].cp},2000)};
   $('sh').onclick=function(){navigator.share({text:last}).catch(function(){})};
 })();
 </script></body></html>
