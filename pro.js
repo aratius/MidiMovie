@@ -2,6 +2,7 @@
    Honest-buyer protection only — nothing here pretends to be unbreakable. Inactive until license-config.js sets enforce: true. */
 (function () {
   'use strict';
+  const priceNow = () => { const p = cfg.price; if (p && typeof p === 'object') return p[(window.I18N && I18N.lang) || 'en'] || p.en || ''; return p || ''; };
   const cfg = Object.assign({ enforce: false, storeId: 0, productIds: [], checkoutUrl: '', price: '', proxy: '', giftPublicKey: '', revoked: [] }, window.MM_LICENSE || {});
   const KEY = 'midimovie.license', API = (cfg.proxy || 'https://api.lemonsqueezy.com').replace(/\/$/, '') + '/v1/licenses/';
   const DAY = 864e5, GRACE = 60 * DAY, RECHECK = 7 * DAY;
@@ -103,7 +104,7 @@
     const pro = isPro();
     $('#proWhy').hidden = !why || pro; $('#proWhy').textContent = why ? tr('pro.why', { feature: why }) : '';
     const ul = $('#proList'); ul.innerHTML = ''; ['pro.f1', 'pro.f2', 'pro.f3', 'pro.f4', 'pro.f5'].forEach(k => { const li = document.createElement('li'); li.textContent = tr(k); ul.appendChild(li); });
-    $('#proPrice').textContent = cfg.price ? tr('pro.price', { price: cfg.price }) : '';
+    $('#proPrice').textContent = priceNow() ? tr('pro.price', { price: priceNow() }) : '';
     const buy = $('#proBuy'); buy.textContent = tr('pro.buy'); buy.hidden = !cfg.checkoutUrl || pro; if (cfg.checkoutUrl) buy.href = cfg.checkoutUrl;
     $('#proKeyH').textContent = tr('pro.haveKey'); $('#proKey').placeholder = tr('pro.keyPh'); $('#proAct').textContent = tr('pro.activate');
     $('#proKeySec').hidden = pro; $('#proOnSec').hidden = !pro || !lic;
@@ -136,7 +137,7 @@
       bar.querySelector('.pro-bar-x').addEventListener('click', () => { mark(K_BAR); syncBar(); });
       document.body.insertBefore(bar, document.body.firstChild);
     }
-    bar.querySelector('.pro-bar-t').textContent = tr('pro.bar', { price: cfg.price || '' });
+    bar.querySelector('.pro-bar-t').textContent = tr('pro.bar', { price: priceNow() });
     bar.querySelector('.pro-bar-go').textContent = tr('pro.barBtn');
     const x = bar.querySelector('.pro-bar-x'); x.textContent = '×'; x.title = tr('pro.barClose'); x.setAttribute('aria-label', tr('pro.barClose'));
   }

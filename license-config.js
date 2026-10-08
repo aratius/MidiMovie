@@ -5,7 +5,7 @@ window.MM_LICENSE = {
   storeId: 0,            // Lemon Squeezy store id (Settings > Stores)   — keys sold by any other store are rejected
   productIds: [],        // e.g. [123456]  product id(s) of MidiMovie Pro  — keys for other products are rejected
   checkoutUrl: 'https://buy.stripe.com/14A3cn0Kn86h0iRfUvgIo01',       // the Lemon Squeezy checkout / buy link
-  price: '¥2,980',       // shown in the dialog
+  price: { en: '$19', zh: '$19', ja: '¥2,980' },       // shown in the dialog
   giftPublicKey: 'BNpwuFmjlGco8UGaP58kSZ8WCjvEqnWKcwh2-bkJnQrrnLOAlljEZICQeZdg02SbnB8WxLKKyjh_9pBKh-Rj4E0',     // public key printed by `node tools/license-keys.mjs init` — enables free gift keys (see docs/PRO-SETUP.md)
   revoked: [],           // ids of gift keys to switch off, e.g. ['a1b2c3']
   proxy: '',             // optional: URL of tools/license-proxy-worker.js if the browser blocks direct calls (CORS)
