@@ -2,7 +2,7 @@
    Honest-buyer protection only — nothing here pretends to be unbreakable. Inactive until license-config.js sets enforce: true. */
 (function () {
   'use strict';
-  const cfg = Object.assign({ enforce: false, storeId: 0, productIds: [], checkoutUrl: '', price: '', proxy: '' }, window.MM_LICENSE || {});
+  const cfg = Object.assign({ enforce: false, storeId: 0, productIds: [], checkoutUrl: '', price: '', proxy: '', giftPublicKey: '', revoked: [] }, window.MM_LICENSE || {});
   const KEY = 'midimovie.license', API = (cfg.proxy || 'https://api.lemonsqueezy.com').replace(/\/$/, '') + '/v1/licenses/';
   const DAY = 864e5, GRACE = 60 * DAY, RECHECK = 7 * DAY;
   const tr = (k, v) => I18N.t(k, v);
@@ -10,7 +10,23 @@
   const store = (v) => { try { if (v) localStorage.setItem(KEY, JSON.stringify(v)); else localStorage.removeItem(KEY); } catch (e) { /* storage blocked */ } };
   let lic = load();
 
-  const isPro = () => !cfg.enforce || !!(lic && lic.instanceId && Date.now() - (lic.checked || 0) < GRACE);
+  const b64d = (s) => { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+  const signedOk = (l) => !!l && l.kind === 'signed' && (!l.exp || Date.now() / 1000 < l.exp) && cfg.revoked.indexOf(l.id) < 0;
+  const isPro = () => !cfg.enforce || (lic && lic.kind === 'signed' ? signedOk(lic) : !!(lic && lic.instanceId && Date.now() - (lic.checked || 0) < GRACE));
+  /* gift keys (MMF1.<payload>.<signature>): signed offline with tools/license-keys.mjs, verified here with the public key — no server involved */
+  async function activateSigned(key) {
+    const m = /^MMF1\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/.exec(key); if (!m) return null;
+    if (!cfg.giftPublicKey || !(window.crypto && crypto.subtle)) return { ok: false, error: 'rejected' };
+    let pl; try {
+      const pub = await crypto.subtle.importKey('raw', b64d(cfg.giftPublicKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+      if (!(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, pub, b64d(m[2]), new TextEncoder().encode('MMF1.' + m[1])))) return { ok: false, error: 'rejected' };
+      pl = JSON.parse(new TextDecoder().decode(b64d(m[1])));
+    } catch (e) { return { ok: false, error: 'rejected' }; }
+    const l = { key, kind: 'signed', id: String(pl.i || ''), name: String(pl.n || ''), exp: pl.e || 0, instanceId: 'offline', checked: Date.now(), since: Date.now() };
+    if (cfg.revoked.indexOf(l.id) >= 0) return { ok: false, error: 'revoked' };
+    if (!signedOk(l)) return { ok: false, error: 'expired' };
+    lic = l; store(lic); refresh(); return { ok: true };
+  }
   const metaOk = (m) => !!m && (!cfg.storeId || m.store_id === cfg.storeId) && (!cfg.productIds.length || cfg.productIds.indexOf(m.product_id) >= 0);
   async function post(path, params) {
     const res = await fetch(API + path, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params).toString() });
@@ -20,19 +36,20 @@
   const mask = (k) => k ? '••••' + String(k).slice(-4) : '';
 
   async function activate(key) {
-    key = String(key || '').trim(); if (!key) return { ok: false, error: 'empty' };
+    key = String(key || '').replace(/\s+/g, ''); if (!key) return { ok: false, error: 'empty' };
+    const sg = await activateSigned(key); if (sg) return sg;
     let j; try { j = await post('activate', { license_key: key, instance_name: 'MidiMovie ' + Math.random().toString(36).slice(2, 7) }); } catch (e) { return { ok: false, error: 'network' }; }
     if (!j.activated || !j.instance) return { ok: false, error: 'rejected', detail: j.error || '' };
     if (!metaOk(j.meta)) { try { await post('deactivate', { license_key: key, instance_id: j.instance.id }); } catch (e) { /* ignore */ } return { ok: false, error: 'product' }; }
     lic = { key, instanceId: j.instance.id, checked: Date.now(), since: Date.now() }; store(lic); refresh(); return { ok: true };
   }
   async function deactivate() {
-    if (lic) { try { await post('deactivate', { license_key: lic.key, instance_id: lic.instanceId }); } catch (e) { /* offline: just forget it here */ } }
+    if (lic && lic.kind !== 'signed') { try { await post('deactivate', { license_key: lic.key, instance_id: lic.instanceId }); } catch (e) { /* offline: just forget it here */ } }
     lic = null; store(null); refresh();
   }
   /* periodic re-check: a refunded / disabled key stops working; being offline never locks anyone out within the grace period */
   async function recheck() {
-    if (!cfg.enforce || !lic || Date.now() - (lic.checked || 0) < RECHECK) return;
+    if (!cfg.enforce || !lic || lic.kind === 'signed' || Date.now() - (lic.checked || 0) < RECHECK) return;
     let j; try { j = await post('validate', { license_key: lic.key, instance_id: lic.instanceId }); } catch (e) { return; }
     if (j.valid && metaOk(j.meta)) { lic.checked = Date.now(); store(lic); }
     else if (j.valid === false || (j.license_key && j.license_key.status && j.license_key.status !== 'active' && j.license_key.status !== 'inactive')) { lic = null; store(null); refresh(); }
@@ -57,7 +74,7 @@
       const b = $('#proAct'); b.disabled = true; msg(tr('pro.checking'));
       const r = await activate($('#proKey').value); b.disabled = false;
       if (r.ok) { msg(tr('pro.thanks'), 'ok'); fill(); setTimeout(() => { if (dlg.open) dlg.close(); }, 1200); }
-      else msg(tr(r.error === 'network' ? 'pro.errNetwork' : r.error === 'product' ? 'pro.errProduct' : r.error === 'empty' ? 'pro.errEmpty' : 'pro.errRejected') + (r.detail ? ' (' + r.detail + ')' : ''), 'bad');
+      else msg(tr(r.error === 'network' ? 'pro.errNetwork' : r.error === 'product' ? 'pro.errProduct' : r.error === 'empty' ? 'pro.errEmpty' : r.error === 'expired' ? 'pro.errExpired' : r.error === 'revoked' ? 'pro.errRevoked' : 'pro.errRejected') + (r.detail ? ' (' + r.detail + ')' : ''), 'bad');
     });
     $('#proKey').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#proAct').click(); });
     $('#proOff').addEventListener('click', async () => { await deactivate(); msg(tr('pro.removed'), 'ok'); fill(); });
@@ -71,7 +88,7 @@
     const buy = $('#proBuy'); buy.textContent = tr('pro.buy'); buy.hidden = !cfg.checkoutUrl || pro; if (cfg.checkoutUrl) buy.href = cfg.checkoutUrl;
     $('#proKeyH').textContent = tr('pro.haveKey'); $('#proKey').placeholder = tr('pro.keyPh'); $('#proAct').textContent = tr('pro.activate');
     $('#proKeySec').hidden = pro; $('#proOnSec').hidden = !pro || !lic;
-    $('#proOn').textContent = lic ? tr('pro.active', { key: mask(lic.key) }) : ''; $('#proOff').textContent = tr('pro.deactivate');
+    $('#proOn').textContent = lic ? (lic.kind === 'signed' ? tr('pro.activeGift', { name: lic.name || mask(lic.id) }) : tr('pro.active', { key: mask(lic.key) })) : ''; $('#proOff').textContent = tr('pro.deactivate');
   }
   function open(feature) { if (!dlg) build(); why = feature ? tr('pro.feat.' + feature) : ''; msg(''); fill(); if (!dlg.open) dlg.showModal(); }
   function require(feature) { if (isPro()) return true; open(feature); return false; }

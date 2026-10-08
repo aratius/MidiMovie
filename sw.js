@@ -1,5 +1,5 @@
 /* MidiMovie service worker: network-first (always fresh when online), cached copy when offline. */
-const CACHE = 'midimovie-v3h';
+const CACHE = 'midimovie-v3i';
 const SHELL = ['./', 'index.html', 'editor.html', 'style.css', 'i18n.js', 'save.js', 'license-config.js', 'pro.js', 'db.js', 'zip.js', 'midi-file.js', 'loudness.js', 'backup.js', 'synth.js', 'sampler.js', 'pitch.js', 'poly.js', 'video-export.js', 'trim.js', 'presets.js', 'app.js', 'ui.js', 'projects.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

@@ -6,5 +6,7 @@ window.MM_LICENSE = {
   productIds: [],        // e.g. [123456]  product id(s) of MidiMovie Pro  — keys for other products are rejected
   checkoutUrl: '',       // the Lemon Squeezy checkout / buy link
   price: '¥2,980',       // shown in the dialog
+  giftPublicKey: '',     // public key printed by `node tools/license-keys.mjs init` — enables free gift keys (see docs/PRO-SETUP.md)
+  revoked: [],           // ids of gift keys to switch off, e.g. ['a1b2c3']
   proxy: ''              // optional: URL of tools/license-proxy-worker.js if the browser blocks direct calls (CORS)
 };

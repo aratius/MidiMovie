@@ -32,3 +32,17 @@ Open the editor → Export → "Stems (ZIP)" → the Pro dialog appears → past
 - Check the app name / preset names for trademark clashes (J-PlatPat).
 
 This licence check protects honest buyers only; anyone can bypass client-side code. That is a normal trade-off for a static, serverless app.
+
+## 友達用のギフトキー(無料でProを渡す)
+
+購入なし・サーバーなしで動く「署名付きキー」です。あなたの秘密鍵で署名し、サイト側は公開鍵で検証します。
+
+1. 初回のみ: `node tools/license-keys.mjs init`
+   - 表示された公開鍵を `license-config.js` の `giftPublicKey` に貼る。
+   - 秘密鍵は `~/.midimovie/gift-private.pem` に作られる。**バックアップを取り、絶対に git に入れない**(`.gitignore` 済み)。失くすと新しいキーを発行できない。
+2. 発行: `node tools/license-keys.mjs issue "友達の名前"`(期限付きは `--days 365`)
+   - 出てきた `MMF1.…` を友達に送る。友達は Pro ダイアログのキー欄に貼るだけ。
+3. 無効化: 発行時に表示される id を `license-config.js` の `revoked` に追加して push。
+4. 確認: `node tools/license-keys.mjs verify <キー>`
+
+`enforce:false` の間は全員が全機能を使えるので、キーが必要になるのは `enforce:true` にした後です。
