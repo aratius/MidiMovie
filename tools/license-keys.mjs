@@ -4,6 +4,7 @@
 //   node tools/license-keys.mjs issue "Taro" [--days 365]   prints a key to send to a friend (no --days = never expires)
 //   node tools/license-keys.mjs verify <key>                checks a key
 // The PRIVATE key stays on your computer (~/.midimovie/gift-private.pem). Never commit it. Whoever has it can mint keys.
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,8 +35,10 @@ if (cmd === 'init') {
   const payload = b64u(JSON.stringify({ n: name, i: id, t: now, e: days > 0 ? Math.floor(now + days * 86400) : 0 }));
   const body = 'MMF1.' + payload;
   const sig = crypto.sign('sha256', Buffer.from(body), { key: loadPriv(), dsaEncoding: 'ieee-p1363' });
-  console.log('Key for ' + name + '  (id ' + id + (days > 0 ? ', expires in ' + days + ' days' : ', no expiry') + '):\n\n' + body + '.' + b64u(sig) + '\n');
-  console.log('To switch it off later, add "' + id + '" to `revoked` in license-config.js.');
+  const key = body + '.' + b64u(sig), url = (process.env.MIDIMOVIE_URL || 'https://aratius.github.io/MidiMovie/') + 'editor.html#gift=' + key;
+  const msg = name + ' さん、MidiMovie の Pro をプレゼントします!\nこのリンクを開くだけで有効になります:\n' + url + '\n(開けない場合は Pro ボタンに次のキーを貼ってください)\n' + key;
+  console.log(msg + '\n\n— id ' + id + (days > 0 ? ', ' + days + '日で期限切れ' : ', 無期限') + '。無効にするには license-config.js の revoked に "' + id + '" を追加');
+  for (const c of [['pbcopy'], ['wl-copy'], ['xclip', '-selection', 'clipboard'], ['clip']]) { const r = spawnSync(c[0], c.slice(1), { input: msg }); if (!r.error && r.status === 0) { console.log('✓ メッセージをクリップボードにコピーしました。そのまま LINE などに貼り付けてください'); break; } }
 } else if (cmd === 'verify') {
   const m = /^(MMF1\.[\w-]+)\.([\w-]+)$/.exec((rest[0] || '').trim());
   if (!m) { console.error('Not a gift key'); process.exit(1); }

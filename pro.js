@@ -96,7 +96,17 @@
     document.documentElement.classList.toggle('not-pro', cfg.enforce && !isPro());
     if (btn) { btn.textContent = isPro() ? 'Pro ✓' : 'Pro'; btn.classList.toggle('on', isPro()); }
   }
+  async function fromLink() {
+    const m = /[#&]gift=([\w.-]+)/.exec(location.hash); if (!m) return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    const r = await activate(m[1]).catch(() => ({ ok: false }));
+    const l = (window.I18N && I18N.lang) || 'en', el = document.getElementById('toast');
+    const msg = r && r.ok ? ({ ja: 'Pro を有効にしました。ありがとう!', zh: 'Pro 已启用。', en: 'Pro unlocked. Enjoy!' })[l] : ({ ja: 'このリンクは無効か期限切れです。', zh: '此链接无效或已过期。', en: 'This link is invalid or expired.' })[l];
+    if (el) { el.textContent = msg; el.hidden = false; setTimeout(() => { el.hidden = true; }, 4000); }
+    refresh();
+  }
   function init() {
+    fromLink();
     if (!cfg.enforce) return;
     const host = document.querySelector('.top-actions'), ex = document.getElementById('btnExport');
     if (host) { btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn small pro-btn'; btn.id = 'btnPro'; btn.addEventListener('click', () => open('')); host.insertBefore(btn, ex || host.firstChild); }
