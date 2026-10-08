@@ -12,6 +12,7 @@
 
   const b64d = (s) => { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
   const signedOk = (l) => !!l && l.kind === 'signed' && (!l.exp || Date.now() / 1000 < l.exp) && cfg.revoked.indexOf(l.id) < 0;
+  const licensed = () => !!lic && (lic.kind === 'signed' ? signedOk(lic) : !!(lic.instanceId && Date.now() - (lic.checked || 0) < GRACE));
   const isPro = () => !cfg.enforce || (lic && lic.kind === 'signed' ? signedOk(lic) : !!(lic && lic.instanceId && Date.now() - (lic.checked || 0) < GRACE));
   /* gift keys (MMF1.<payload>.<signature>): signed offline with tools/license-keys.mjs, verified here with the public key — no server involved */
   async function activateSigned(key) {
@@ -94,6 +95,11 @@
   function require(feature) { if (isPro()) return true; open(feature); return false; }
   function refresh() {
     document.documentElement.classList.toggle('not-pro', cfg.enforce && !isPro());
+    const on = licensed();
+    document.documentElement.classList.toggle('is-pro', on);
+    document.title = document.title.replace(/ Pro$/, '') + (on ? ' Pro' : '');
+    const h1 = document.querySelector('.home h1'); if (h1) { const b = h1.querySelector('.pro-badge'); if (on && !b) { const e = document.createElement('span'); e.className = 'pro-badge'; e.textContent = 'PRO'; h1.appendChild(e); } else if (!on && b) b.remove(); }
+    const ll = document.querySelector('.brand .logo-link'); if (ll) { const b = ll.parentNode.querySelector('.pro-badge'); if (on && !b) { const e = document.createElement('span'); e.className = 'pro-badge'; e.textContent = 'PRO'; ll.after(e); } else if (!on && b) b.remove(); }
     if (btn) { btn.textContent = isPro() ? 'Pro ✓' : 'Pro'; btn.classList.toggle('on', isPro()); }
   }
   async function fromLink() {
@@ -106,12 +112,12 @@
     refresh();
   }
   function init() {
-    fromLink();
+    fromLink(); refresh();
     if (!cfg.enforce) return;
-    const host = document.querySelector('.top-actions'), ex = document.getElementById('btnExport');
+    const host = document.querySelector('.top-actions') || document.getElementById('langSwitch') && document.getElementById('langSwitch').parentNode, ex = document.getElementById('btnExport') || document.getElementById('langSwitch');
     if (host) { btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn small pro-btn'; btn.id = 'btnPro'; btn.addEventListener('click', () => open('')); host.insertBefore(btn, ex || host.firstChild); }
     refresh(); recheck();
   }
-  window.Pro = { cfg, isPro, require, open, activate, deactivate, refresh, recheck };
+  window.Pro = { cfg, isPro, licensed, require, open, activate, deactivate, refresh, recheck };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

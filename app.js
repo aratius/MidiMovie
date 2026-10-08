@@ -1393,7 +1393,7 @@
       } else rec = await Store.get(PID);
     } catch (err) { console.error(err); }
     if (!rec) { toast(t('proj.notFound')); setTimeout(() => location.replace('./'), 1500); return; }
-    P.rec = rec; P.name = rec.name; P.thumb = rec.thumb; $('projName').value = rec.name; document.title = rec.name + ' – MidiMovie';
+    P.rec = rec; P.name = rec.name; P.thumb = rec.thumb; $('projName').value = rec.name; document.title = rec.name + ' – MidiMovie' + (window.Pro && Pro.licensed() ? ' Pro' : '');
     if (rec.data && rec.data.layers) applyData(rec.data);
     let v = null; try { v = await Store.getVideo(PID); } catch (err) { /* ignore */ }
     if (v && v.blob) loadVideoFile(new File([v.blob], v.name || 'video', { type: v.type || v.blob.type }), { fromStore: true, seek: rec.data && rec.data.playhead });
@@ -1401,7 +1401,7 @@
     Store.persist();
     setInterval(saveNow, 700);
   }
-  $('projName').addEventListener('input', (e) => { P.name = e.target.value.trim() || t('proj.untitled'); document.title = P.name + ' – MidiMovie'; });
+  $('projName').addEventListener('input', (e) => { P.name = e.target.value.trim() || t('proj.untitled'); document.title = P.name + ' – MidiMovie' + (window.Pro && Pro.licensed() ? ' Pro' : ''); });
   window.addEventListener('pagehide', () => saveNow(true));
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(true); });
   window.addEventListener('beforeunload', (e) => { if (!P.rec || !Store.available) { if (S.layers.length || S.pending) { e.preventDefault(); e.returnValue = ''; } } else if (JSON.stringify(serialize()) !== P.lastJson) { saveNow(true); e.preventDefault(); e.returnValue = ''; } });

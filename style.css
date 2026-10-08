@@ -408,3 +408,6 @@ a.btn{text-decoration:none}
 .pro-price{font-size:20px;font-weight:800;margin:4px 0 10px}
 #proWhy{background:rgba(255,122,69,.12);border:1px solid rgba(255,122,69,.35);border-radius:8px;padding:9px 12px;font-size:13px}
 #proKey{height:36px;border-radius:8px;border:1px solid var(--line2);background:#0f1115;color:var(--text);padding:0 10px;font-family:ui-monospace,Menlo,monospace}
+
+.pro-badge{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;background:#6c5ce7;color:#fff;font:700 11px/1.6 system-ui,sans-serif;letter-spacing:.08em;vertical-align:middle}
+.brand .logo-link+.pro-badge{margin:0 6px 0 -2px}
