@@ -7,7 +7,8 @@
 //   GIFT_PRIVATE_PEM      contents of ~/.midimovie/gift-private.pem  (same key pair as license-keys.mjs)
 //   ADMIN_TOKEN           password for admin.html (issuing free gift keys); pick a long random string
 //   RESEND_API_KEY        optional: emails the key to the buyer (otherwise only the success page shows it)
-// Vars: SITE (e.g. https://aratius.github.io/MidiMovie/), FROM_EMAIL (optional), ALLOW_ORIGIN (https://aratius.github.io)
+// KV namespace binding LICENSES: device registry (limits how many devices one key can be active on) + server-side revocations.
+// Vars: DEVICE_LIMIT (default 3), SITE (e.g. https://aratius.github.io/MidiMovie/), FROM_EMAIL (optional), ALLOW_ORIGIN (https://aratius.github.io)
 const enc = new TextEncoder();
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const hex = (buf) => [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -52,6 +53,46 @@ async function emailKey(env, to, name, key) {
   });
 }
 
+
+/* ---- device limit: a key can be active on at most DEVICE_LIMIT devices (default 3) ---- */
+let _pub;
+async function pubKey(env) {
+  if (_pub) return _pub;
+  const der = Uint8Array.from(atob(env.GIFT_PRIVATE_PEM.replace(/-----[^-]+-----|\s/g, '')), (c) => c.charCodeAt(0));
+  const priv = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+  const jwk = await crypto.subtle.exportKey('jwk', priv); delete jwk.d; jwk.key_ops = ['verify'];
+  return (_pub = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']));
+}
+const unb64u = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); };
+async function parseKey(env, key) {
+  const m = /^MMF1\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/.exec(String(key || '').replace(/\s+/g, ''));
+  if (!m) return null;
+  try {
+    if (!(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, await pubKey(env), unb64u(m[2]), enc.encode('MMF1.' + m[1])))) return null;
+    return JSON.parse(new TextDecoder().decode(unb64u(m[1])));
+  } catch (e) { return null; }
+}
+const json = (cors, status, o) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+async function deviceCall(req, env, cors, action) {
+  if (!env.LICENSES) return json(cors, 500, { ok: false, error: 'noserver' });
+  const b = await req.json().catch(() => ({}));
+  const device = String(b.device || '').slice(0, 64);
+  const pl = await parseKey(env, b.key);
+  if (!pl || !pl.i || !/^[\w-]{8,64}$/.test(device)) return json(cors, 403, { ok: false, error: 'rejected' });
+  const id = String(pl.i), limit = Math.max(1, +env.DEVICE_LIMIT || 3);
+  if (pl.e && Date.now() / 1000 > pl.e) return json(cors, 403, { ok: false, error: 'expired' });
+  if (await env.LICENSES.get('rev:' + id)) return json(cors, 403, { ok: false, error: 'revoked' });
+  let list = []; try { list = JSON.parse((await env.LICENSES.get('dev:' + id)) || '[]'); } catch (e) { /* reset */ }
+  const has = list.some((x) => x.d === device);
+  if (action === 'deactivate') { list = list.filter((x) => x.d !== device); await env.LICENSES.put('dev:' + id, JSON.stringify(list)); return json(cors, 200, { ok: true }); }
+  if (!has) {
+    if (list.length >= limit) return json(cors, 409, { ok: false, error: 'limit', limit });
+    list.push({ d: device, t: Date.now() });
+  } else list = list.map((x) => (x.d === device ? { d: x.d, t: x.t, s: Date.now() } : x));
+  await env.LICENSES.put('dev:' + id, JSON.stringify(list));
+  return json(cors, 200, { ok: true, name: pl.n || '', exp: pl.e || 0, devices: list.length, limit });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -72,6 +113,16 @@ export default {
       const id = hex(crypto.getRandomValues(new Uint8Array(3)));
       const key = await signKey(env, id, name, { id, days });
       return new Response(JSON.stringify({ ok: true, key, id, name, days, link: (env.SITE || '') + 'editor.html#gift=' + key }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+    if (req.method === 'POST' && (url.pathname === '/activate' || url.pathname === '/deactivate')) return deviceCall(req, env, cors, url.pathname.slice(1));
+    if (url.pathname === '/revoke' && req.method === 'POST') { // admin.html: switch a key off for good (needs ADMIN_TOKEN)
+      const given = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
+      const [a, b] = await Promise.all([given, env.ADMIN_TOKEN || '\u0000never'].map((x) => crypto.subtle.digest('SHA-256', enc.encode(x))));
+      if (!env.ADMIN_TOKEN || !env.LICENSES || hex(a) !== hex(b)) return json(cors, 401, { ok: false });
+      const body = await req.json().catch(() => ({})); const id = String(body.id || '');
+      if (!/^[\w-]{4,64}$/.test(id)) return json(cors, 400, { ok: false });
+      if (body.undo) await env.LICENSES.delete('rev:' + id); else await env.LICENSES.put('rev:' + id, '1');
+      return json(cors, 200, { ok: true, id, revoked: !body.undo });
     }
     if (url.pathname === '/webhook' && req.method === 'POST') {
       const raw = await req.text();

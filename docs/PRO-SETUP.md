@@ -73,3 +73,18 @@ wrangler secret put ADMIN_TOKEN --name midimovie-license
 wrangler deploy tools/stripe-license-worker.js --name midimovie-license --compatibility-date 2026-10-01 --var ALLOW_ORIGIN:https://aratius.github.io --var SITE:https://aratius.github.io/MidiMovie/
 ```
 秘密鍵は Worker の中にあり、ページには出ません。パスワードがないと発行できません。無効化は従来どおり `revoked` に id を追加します。
+
+
+## 端末数の制限(1キー最大3台)と即時無効化
+
+キー(購入分・ギフト共通)は、Worker が端末ごとの記録(Cloudflare KV)を持ち、1キーにつき最大3台(`DEVICE_LIMIT`)までに制限します。ほかの端末で外すには、その端末の Pro ダイアログの「この端末の Pro を解除」を押します(枠が1つ空きます)。
+初回だけ、KV を作って ID を書きます。
+```
+cd ~/git/_Envs/_AI/MidiMovie && git pull
+wrangler kv namespace create LICENSES        # 出力された id をコピー
+```
+`tools/wrangler.toml` の `REPLACE_WITH_KV_ID` をその id に変えてから、デプロイは今後これで統一します(秘密情報は今までのものがそのまま残ります)。
+```
+cd tools && wrangler deploy
+```
+無効化は管理ページの履歴の「無効にする」で、再デプロイ不要で効きます(端末は週1回の確認で反映)。

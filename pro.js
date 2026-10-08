@@ -11,7 +11,17 @@
   let lic = load();
 
   const b64d = (s) => { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
-  const signedOk = (l) => !!l && l.kind === 'signed' && (!l.exp || Date.now() / 1000 < l.exp) && cfg.revoked.indexOf(l.id) < 0;
+  const device = () => { try { let d = localStorage.getItem('midimovie.device'); if (!d) { d = Array.from(crypto.getRandomValues(new Uint8Array(12)), (x) => x.toString(16).padStart(2, '0')).join(''); localStorage.setItem('midimovie.device', d); } return d; } catch (e) { return 'nostorage-' + Math.random().toString(16).slice(2, 12); } };
+  /* signed keys are also registered on the license server (tools/stripe-license-worker.js) so one key works on a limited number of devices */
+  async function server(path, key) {
+    try {
+      const r = await fetch(cfg.keyApi.replace(/\/$/, '') + '/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, device: device() }) });
+      const j = await r.json().catch(() => null);
+      if (!j || (r.status >= 500)) return { ok: false, error: 'network' };
+      return j;
+    } catch (e) { return { ok: false, error: 'network' }; }
+  }
+  const signedOk = (l) => !!l && l.kind === 'signed' && (!l.exp || Date.now() / 1000 < l.exp) && cfg.revoked.indexOf(l.id) < 0 && (!cfg.keyApi || Date.now() - (l.checked || 0) < GRACE);
   const licensed = () => !!lic && (lic.kind === 'signed' ? signedOk(lic) : !!(lic.instanceId && Date.now() - (lic.checked || 0) < GRACE));
   const isPro = () => !cfg.enforce || (lic && lic.kind === 'signed' ? signedOk(lic) : !!(lic && lic.instanceId && Date.now() - (lic.checked || 0) < GRACE));
   /* gift keys (MMF1.<payload>.<signature>): signed offline with tools/license-keys.mjs, verified here with the public key — no server involved */
@@ -25,7 +35,8 @@
     } catch (e) { return { ok: false, error: 'rejected' }; }
     const l = { key, kind: 'signed', id: String(pl.i || ''), name: String(pl.n || ''), exp: pl.e || 0, instanceId: 'offline', checked: Date.now(), since: Date.now() };
     if (cfg.revoked.indexOf(l.id) >= 0) return { ok: false, error: 'revoked' };
-    if (!signedOk(l)) return { ok: false, error: 'expired' };
+    if (l.exp && Date.now() / 1000 >= l.exp) return { ok: false, error: 'expired' };
+    if (cfg.keyApi) { const r = await server('activate', key); if (!r.ok) return { ok: false, error: r.error || 'network' }; }
     lic = l; store(lic); refresh(); return { ok: true };
   }
   const metaOk = (m) => !!m && (!cfg.storeId || m.store_id === cfg.storeId) && (!cfg.productIds.length || cfg.productIds.indexOf(m.product_id) >= 0);
@@ -45,11 +56,17 @@
     lic = { key, instanceId: j.instance.id, checked: Date.now(), since: Date.now() }; store(lic); refresh(); return { ok: true };
   }
   async function deactivate() {
+    if (lic && lic.kind === 'signed' && cfg.keyApi) { await server('deactivate', lic.key); }
     if (lic && lic.kind !== 'signed') { try { await post('deactivate', { license_key: lic.key, instance_id: lic.instanceId }); } catch (e) { /* offline: just forget it here */ } }
     lic = null; store(null); refresh();
   }
   /* periodic re-check: a refunded / disabled key stops working; being offline never locks anyone out within the grace period */
   async function recheck() {
+    if (cfg.enforce && lic && lic.kind === 'signed' && cfg.keyApi && Date.now() - (lic.checked || 0) >= RECHECK) {
+      const r = await server('activate', lic.key);
+      if (r.ok) { lic.checked = Date.now(); store(lic); } else if (r.error !== 'network') { lic = null; store(null); refresh(); }
+      return;
+    }
     if (!cfg.enforce || !lic || lic.kind === 'signed' || Date.now() - (lic.checked || 0) < RECHECK) return;
     let j; try { j = await post('validate', { license_key: lic.key, instance_id: lic.instanceId }); } catch (e) { return; }
     if (j.valid && metaOk(j.meta)) { lic.checked = Date.now(); store(lic); }
@@ -75,7 +92,7 @@
       const b = $('#proAct'); b.disabled = true; msg(tr('pro.checking'));
       const r = await activate($('#proKey').value); b.disabled = false;
       if (r.ok) { msg(tr('pro.thanks'), 'ok'); fill(); setTimeout(() => { if (dlg.open) dlg.close(); }, 1200); }
-      else msg(tr(r.error === 'network' ? 'pro.errNetwork' : r.error === 'product' ? 'pro.errProduct' : r.error === 'empty' ? 'pro.errEmpty' : r.error === 'expired' ? 'pro.errExpired' : r.error === 'revoked' ? 'pro.errRevoked' : 'pro.errRejected') + (r.detail ? ' (' + r.detail + ')' : ''), 'bad');
+      else msg(tr(r.error === 'network' ? 'pro.errNetwork' : r.error === 'product' ? 'pro.errProduct' : r.error === 'empty' ? 'pro.errEmpty' : r.error === 'limit' ? 'pro.errLimit' : r.error === 'expired' ? 'pro.errExpired' : r.error === 'revoked' ? 'pro.errRevoked' : 'pro.errRejected') + (r.detail ? ' (' + r.detail + ')' : ''), 'bad');
     });
     $('#proKey').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#proAct').click(); });
     $('#proOff').addEventListener('click', async () => { await deactivate(); msg(tr('pro.removed'), 'ok'); fill(); });
@@ -131,7 +148,7 @@
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
     const r = await activate(m[1]).catch(() => ({ ok: false }));
     const l = (window.I18N && I18N.lang) || 'en', el = document.getElementById('toast');
-    const msg = r && r.ok ? ({ ja: 'Pro を有効にしました。ありがとう!', zh: 'Pro 已启用。', en: 'Pro unlocked. Enjoy!' })[l] : ({ ja: 'このリンクは無効か期限切れです。', zh: '此链接无效或已过期。', en: 'This link is invalid or expired.' })[l];
+    const msg = r && r.ok ? ({ ja: 'Pro を有効にしました。ありがとう!', zh: 'Pro 已启用。', en: 'Pro unlocked. Enjoy!' })[l] : (r && r.error === 'limit' ? tr('pro.errLimit') : { ja: 'このリンクは無効か期限切れです。', zh: '此链接无效或已过期。', en: 'This link is invalid or expired.' }[l]);
     if (el) { el.textContent = msg; el.hidden = false; setTimeout(() => { el.hidden = true; }, 4000); }
     refresh();
   }
