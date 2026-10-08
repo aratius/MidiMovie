@@ -102,7 +102,7 @@
       const src = await (await fetch(MM.S.videoUrl)).blob();
       const r = await VideoExport.mux(src, buf, (p) => { prog.value = p; msg(t('exp.videoWorking', { p: Math.round(p * 100) })); });
       const name = baseName() + '-scored.mp4';
-      MM.download(r.blob, name); msg(t('exp.videoDone', { name, size: fmtMB(r.blob.size), codec: r.audioCodec.toUpperCase() }), 'ok');
+      MM.download(r.blob, name); msg(t('exp.videoDone', { name, size: fmtMB(r.blob.size), codec: r.audioCodec.toUpperCase() }) + (r.audioCodec === 'opus' ? ' ' + t('exp.videoOpus') : ''), 'ok');
     } catch (err) {
       console.error(err); const m = String(err && err.message || err);
       msg(m === 'missing' ? t('exp.videoNoEngine') : m === 'unsupported' ? t('exp.videoUnsupported') : m === 'noaudiocodec' ? t('exp.videoNoCodec') : t('exp.videoFail'), 'bad');
