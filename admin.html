@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>MidiMovie Admin</title>
+<style>
+:root{color-scheme:dark}body{font:16px/1.6 system-ui,-apple-system,"Hiragino Sans",sans-serif;max-width:520px;margin:0 auto;padding:24px 16px 64px;background:#111;color:#eee}
+h1{font-size:20px}label{display:block;margin:14px 0 4px;color:#aaa;font-size:13px}input,select{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #333;background:#1b1b1f;color:#eee;font-size:16px}
+button{padding:12px 18px;border-radius:8px;border:0;background:#6c5ce7;color:#fff;font-size:16px;font-weight:600;cursor:pointer}button.s{background:#2a2a30}button:disabled{opacity:.5}
+.row{display:flex;gap:8px;margin-top:14px}.row>*{flex:1}.out{margin-top:20px;padding:14px;border-radius:10px;background:#1b1b1f;word-break:break-all;font-size:13px}
+.m{color:#999;font-size:13px}.err{color:#ff7675}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}td{padding:6px 4px;border-bottom:1px solid #2a2a30}
+</style></head><body>
+<h1>MidiMovie Pro ギフトキー発行</h1>
+<div id="login">
+  <label>管理パスワード(ADMIN_TOKEN)</label><input id="tok" type="password" autocomplete="current-password">
+  <label style="display:flex;gap:8px;align-items:center"><input id="rem" type="checkbox" style="width:auto"> この端末に保存する</label>
+  <div class="row"><button id="go">ログイン</button></div>
+</div>
+<div id="app" hidden>
+  <label>友達の名前</label><input id="nm" placeholder="たろう" autocomplete="off">
+  <label>期限</label><select id="dy"><option value="0">無期限</option><option value="30">30日</option><option value="90">90日</option><option value="365">1年</option></select>
+  <div class="row"><button id="mk">キーを発行</button></div>
+  <p class="err" id="er"></p>
+  <div id="res" hidden>
+    <div class="out" id="msg"></div>
+    <div class="row"><button class="s" id="cp">メッセージをコピー</button><button class="s" id="sh">共有…</button></div>
+  </div>
+  <h2 style="font-size:15px;margin-top:32px">この端末で発行した履歴</h2>
+  <p class="m">無効にしたいキーの id を <code>license-config.js</code> の <code>revoked</code> に追加して push します。</p>
+  <table id="hist"></table>
+  <div class="row"><button class="s" id="out">ログアウト</button></div>
+</div>
+<script src="license-config.js"></script>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)},cfg=window.MM_LICENSE||{},api=(cfg.keyApi||'').replace(/\/$/,''),H='midimovie.adminHist',T='midimovie.adminTok',tok='';
+  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+  function hist(){try{return JSON.parse(ls(H)||'[]')}catch(e){return[]}}
+  function drawHist(){var h=hist();$('hist').innerHTML=h.length?h.map(function(r){return '<tr><td>'+r.name.replace(/[<&]/g,'')+'</td><td>'+r.id+'</td><td>'+r.date+'</td><td>'+(r.days?r.days+'日':'無期限')+'</td></tr>'}).join(''):'<tr><td class="m">まだありません</td></tr>'}
+  function show(){$('login').hidden=true;$('app').hidden=false;drawHist()}
+  var saved=ls(T);if(saved){tok=saved;show()}
+  $('go').onclick=function(){tok=$('tok').value.trim();if(!tok)return;if($('rem').checked)ls(T,tok);show()};
+  $('out').onclick=function(){ls(T,null);tok='';location.reload()};
+  var last='';
+  $('mk').onclick=async function(){
+    $('er').textContent='';var name=$('nm').value.trim()||'friend',days=+$('dy').value;$('mk').disabled=true;
+    try{
+      if(!api)throw new Error('keyApi が未設定です');
+      var r=await fetch(api+'/issue',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({name:name,days:days})});
+      if(r.status===401){ls(T,null);throw new Error('パスワードが違います')}
+      var j=await r.json();if(!j.ok)throw new Error('発行に失敗しました');
+      last=name+' さん、MidiMovie の Pro をプレゼントします!\nこのリンクを開くだけで有効になります:\n'+j.link+'\n(開けない場合は Pro ボタンに次のキーを貼ってください)\n'+j.key;
+      $('msg').textContent=last;$('res').hidden=false;
+      var h=hist();h.unshift({name:name,id:j.id,days:days,date:new Date().toISOString().slice(0,10)});ls(H,JSON.stringify(h.slice(0,100)));drawHist();$('nm').value='';
+      $('sh').hidden=!navigator.share;
+    }catch(e){$('er').textContent=e.message||'エラー'}finally{$('mk').disabled=false}
+  };
+  $('cp').onclick=async function(){try{await navigator.clipboard.writeText(last);$('cp').textContent='コピーしました ✓'}catch(e){$('cp').textContent='長押しでコピーしてください'}setTimeout(function(){$('cp').textContent='メッセージをコピー'},2000)};
+  $('sh').onclick=function(){navigator.share({text:last}).catch(function(){})};
+})();
+</script></body></html>

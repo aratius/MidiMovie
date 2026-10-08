@@ -63,3 +63,13 @@ Stripe にはライセンスキー機能がないので、`tools/stripe-license-
 6. テストカード 4242 4242 4242 4242 で購入 → thanks ページでキー → Pro 有効、を確認してから本番キーに切り替え、`enforce:true`。
 
 返金したいときは、そのキーの id を `revoked` に追加します。
+
+### 友達用キーを画面から発行する(admin.html)
+
+`https://aratius.github.io/MidiMovie/admin.html` を開き、管理パスワードでログイン → 名前と期限を選んで「キーを発行」→「メッセージをコピー」/「共有」。
+初回だけ Worker に管理パスワードを設定します(長いランダムな文字列を自分で決める):
+```
+wrangler secret put ADMIN_TOKEN --name midimovie-license
+wrangler deploy tools/stripe-license-worker.js --name midimovie-license --compatibility-date 2026-10-01 --var ALLOW_ORIGIN:https://aratius.github.io --var SITE:https://aratius.github.io/MidiMovie/
+```
+秘密鍵は Worker の中にあり、ページには出ません。パスワードがないと発行できません。無効化は従来どおり `revoked` に id を追加します。
