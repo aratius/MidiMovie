@@ -9,5 +9,6 @@ window.MM_LICENSE = {
   giftPublicKey: 'BNpwuFmjlGco8UGaP58kSZ8WCjvEqnWKcwh2-bkJnQrrnLOAlljEZICQeZdg02SbnB8WxLKKyjh_9pBKh-Rj4E0',     // public key printed by `node tools/license-keys.mjs init` — enables free gift keys (see docs/PRO-SETUP.md)
   revoked: [],           // ids of gift keys to switch off, e.g. ['a1b2c3']
   proxy: '',             // optional: URL of tools/license-proxy-worker.js if the browser blocks direct calls (CORS)
+  contactEmail: '',      // shown on terms/privacy/tokushoho pages (empty = link to GitHub Issues). Set your public contact address here.
   keyApi: 'https://midimovie-license.aratius.workers.dev'             // Stripe route: URL of tools/stripe-license-worker.js (used by thanks.html)
 };
