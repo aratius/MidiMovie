@@ -153,6 +153,13 @@
     const p = cur(), m = Sampler.meta.get(id);
     $('smpName').textContent = m.name; $('smpDur').textContent = m.dur ? ' ' + m.dur.toFixed(2) + ' s' : '';
     $('smpRoot').value = p.smpRoot; $('smpLoop').checked = !!p.smpLoop;
+    const sl = p.smpMode === 1;
+    $('smpModeSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String((+b.dataset.mode) === (sl ? 1 : 0))));
+    $('smpSlicePane').hidden = !sl; $('smpRootLab').hidden = sl;
+    $('smpSens').value = p.smpSens; $('smpSensVal').textContent = Math.round(p.smpSens * 100) + '%';
+    $('smpBase').value = p.smpBase; $('smpOne').checked = !!p.smpOne;
+    $('smpWaveHint').textContent = t(sl ? 'smp.hintSlice' : 'smp.hintPitch');
+    updateSliceInfo();
     $('smpAtk').value = p.attack; $('smpRel').value = p.release; $('smpTone').value = toneToPos(p.cutoff); $('smpRev').value = p.reverb; $('smpGain').value = p.gain;
     loadWave(id);
   }
@@ -167,6 +174,7 @@
     sg.setTransform(dpr, 0, 0, dpr, 0, 0); sg.clearRect(0, 0, W, H);
     sg.fillStyle = '#0b0c0f'; sg.fillRect(0, 0, W, H);
     const buf = Synth.samples.get(id); const dur = buf ? buf.duration : 1, p = cur();
+    if (p.smpMode === 1) { drawSlices(W, H, dur, p); return; }
     const st = p.smpStart || 0, en = p.smpEnd > 0 ? p.smpEnd : dur;
     if (wavePeaks) {
       sg.fillStyle = '#ff7a45'; const n = wavePeaks.length;
@@ -179,9 +187,34 @@
     sg.fillStyle = '#8b92a3'; sg.font = '10px ui-monospace, Menlo, monospace'; sg.textBaseline = 'bottom';
     sg.fillText(st.toFixed(2), Math.min(W - 44, xs + 4), H - 3); sg.textAlign = 'right'; sg.fillText(en.toFixed(2), Math.max(44, xe - 4), H - 3); sg.textAlign = 'left';
   }
+  /* ---- slice mode ---- */
+  const getCuts = () => String(cur().smpCuts || '').split(',').map(parseFloat).filter(x => isFinite(x) && x > 0).sort((a, b) => a - b);
+  const putCuts = (arr) => { cur().smpCuts = arr.map(x => x.toFixed(3)).join(','); };
+  const maxSlices = () => Math.max(1, Math.min(72, 108 - (cur().smpBase | 0)));
+  function updateSliceInfo() {
+    const id = curSample(), box = $('smpSliceInfo'); if (!id || cur().smpMode !== 1) return;
+    const buf = Synth.samples.get(id); if (!buf) return;
+    const n = Synth.parseCuts(cur().smpCuts, buf.duration, cur().smpStart, cur().smpEnd).length - 1, b = cur().smpBase | 0;
+    box.textContent = n > 1 ? t('smp.sliceInfo', { n, lo: noteName(b), hi: noteName(b + n - 1) }) : t('smp.sliceNone');
+  }
+  function drawSlices(W, H, dur, p) {
+    const cuts = Synth.parseCuts(p.smpCuts, dur, p.smpStart, p.smpEnd), base = p.smpBase | 0;
+    const dimA = cuts[0] / dur * W, dimB = cuts[cuts.length - 1] / dur * W;
+    for (let i = 0; i < cuts.length - 1; i++) { const x0 = cuts[i] / dur * W, x1 = cuts[i + 1] / dur * W; sg.fillStyle = i % 2 ? 'rgba(255,122,69,.06)' : 'rgba(255,179,71,.13)'; sg.fillRect(x0, 0, x1 - x0, H); }
+    if (wavePeaks) { sg.fillStyle = '#ff7a45'; const n = wavePeaks.length; for (let x = 0; x < W; x++) { const a = wavePeaks[Math.min(n - 1, Math.floor(x / W * n))], h = Math.max(1, a * (H - 26)); sg.fillRect(x, 8 + (H - 26 - h) / 2 + 9, 1, h); } }
+    sg.fillStyle = 'rgba(0,0,0,.55)'; sg.fillRect(0, 0, dimA, H); sg.fillRect(dimB, 0, W - dimB, H);
+    sg.font = '10px ui-monospace, Menlo, monospace'; sg.textBaseline = 'top';
+    for (let i = 0; i < cuts.length; i++) {
+      const x = cuts[i] / dur * W;
+      if (i > 0 && i < cuts.length - 1) { sg.fillStyle = '#ffb347'; sg.fillRect(x - 1, 0, 2, H); }
+      if (i === 0 || i === cuts.length - 1) { sg.fillStyle = '#ffb347'; if (x > 1 && x < W - 1) sg.fillRect(x - 1, 0, 2, H); }
+      if (i < cuts.length - 1) { const w = (cuts[i + 1] - cuts[i]) / dur * W; if (w > 26) { sg.fillStyle = '#e6e8ee'; sg.fillText(noteName(base + i), x + 4, 3); } }
+    }
+  }
   function waveX(e) { const r = sc.getBoundingClientRect(), buf = Synth.samples.get(curSample()), dur = buf ? buf.duration : 1; return clamp((e.clientX - r.left) / r.width, 0, 1) * dur; }
   sc.addEventListener('pointerdown', (e) => {
     const id = curSample(); if (!id) return; const buf = Synth.samples.get(id); if (!buf) return;
+    if (cur().smpMode === 1) { sliceDown(e, buf); return; }
     sc.setPointerCapture(e.pointerId); const p = cur(), x = waveX(e), st = p.smpStart || 0, en = p.smpEnd > 0 ? p.smpEnd : buf.duration;
     drag = Math.abs(x - st) <= Math.abs(x - en) ? 'start' : 'end'; moveHandle(x);
   });
@@ -191,8 +224,32 @@
     else p.smpEnd = clamp(x, (p.smpStart || 0) + min, dur);
     drawWave();
   }
-  sc.addEventListener('pointermove', (e) => { if (drag) moveHandle(waveX(e)); });
-  const waveUp = () => { if (!drag) return; drag = null; MM.liveUpdate(); MM.auditionNote(false); };
+  let cutDrag = null;
+  function sliceDown(e, buf) {
+    sc.setPointerCapture(e.pointerId);
+    const dur = buf.duration, r = sc.getBoundingClientRect(), x = waveX(e), cuts = getCuts(), pxs = dur / r.width;
+    let hit = -1, bd = 9 * pxs; cuts.forEach((c, i) => { const d = Math.abs(c - x); if (d < bd) { bd = d; hit = i; } });
+    const p0 = cur(), eS = p0.smpStart || 0, eE = p0.smpEnd > 0 ? p0.smpEnd : dur;
+    if (hit < 0 && (Math.abs(x - eS) < 9 * pxs || Math.abs(x - eE) < 9 * pxs)) { cutDrag = { edge: Math.abs(x - eS) <= Math.abs(x - eE) ? 'start' : 'end', moved: true, sx: e.clientX }; return; }
+    if (hit >= 0) cutDrag = { i: hit, v: cuts[hit], moved: false, sx: e.clientX, existed: true };
+    else { if (cuts.length + 1 >= maxSlices()) { MM.toast(t('smp.tooMany', { n: maxSlices() })); return; } cuts.push(x); cuts.sort((a, b) => a - b); putCuts(cuts); cutDrag = { i: cuts.indexOf(x), v: x, moved: true, sx: e.clientX, existed: false }; drawWave(); updateSliceInfo(); }
+  }
+  function sliceMove(e) {
+    const d = cutDrag; if (!d) return; if (Math.abs(e.clientX - d.sx) > 3) d.moved = true; if (!d.moved) return;
+    const buf = Synth.samples.get(curSample()); if (!buf) return;
+    if (d.edge) { const p = cur(), x = waveX(e); if (d.edge === 'start') p.smpStart = clamp(x, 0, (p.smpEnd > 0 ? p.smpEnd : buf.duration) - 0.05); else p.smpEnd = clamp(x, (p.smpStart || 0) + 0.05, buf.duration); drawWave(); updateSliceInfo(); return; }
+    const cuts = getCuts(), lo = (cuts[d.i - 1] || 0) + 0.01, hi = (cuts[d.i + 1] || buf.duration) - 0.01;
+    cuts[d.i] = clamp(waveX(e), lo, Math.max(lo, hi)); d.v = cuts[d.i]; putCuts(cuts); drawWave();
+  }
+  function sliceUp() {
+    const d = cutDrag; if (!d) return; cutDrag = null;
+    if (d.edge) { const p = cur(), b = Synth.samples.get(curSample()); if (b && p.smpEnd >= b.duration - 0.02) p.smpEnd = 0; drawWave(); updateSliceInfo(); MM.liveUpdate(); MM.auditionNote(false); return; }
+    if (d.existed && !d.moved) { const cuts = getCuts(); cuts.splice(d.i, 1); putCuts(cuts); }
+    drawWave(); updateSliceInfo(); MM.liveUpdate();
+    const buf = Synth.samples.get(curSample()); if (buf) { const cs = Synth.parseCuts(cur().smpCuts, buf.duration, cur().smpStart, cur().smpEnd); let k = 0; for (let j = 0; j < cs.length - 1; j++) if (d.v >= cs[j]) k = j; MM.auditionNote((cur().smpBase | 0) + Math.min(k, cs.length - 2)); }
+  }
+  sc.addEventListener('pointermove', (e) => { if (cutDrag) sliceMove(e); else if (drag) moveHandle(waveX(e)); });
+  const waveUp = () => { if (cutDrag) { sliceUp(); return; } if (!drag) return; drag = null; MM.liveUpdate(); MM.auditionNote(false); };
   sc.addEventListener('pointerup', waveUp); sc.addEventListener('pointercancel', waveUp);
 
   async function chooseSample(id) {
@@ -200,8 +257,25 @@
     const prev = cur(); let p;
     if (prev.sampleId === id) p = prev;
     else p = Object.assign({}, Synth.BASE, { wave1: 'off', wave2: 'off', noise: 0, sampleId: id, smpStart: 0, smpEnd: 0, smpRoot: 60, smpLoop: 0, attack: 0.002, decay: 0.3, sustain: 1, release: 0.15, cutoff: 18000, resonance: 0.7, keytrack: 0, fEnv: 0, reverb: 0.1, gain: 0.8 });
+    if (prev.sampleId !== id) { const b = Synth.samples.get(id); if (b && b.duration >= 5) { p.smpMode = 1; p.smpLoop = 0; autoCuts(id, p); } }
     MM.setInstrument(p, 'smp:' + id); refreshSampler(); MM.auditionNote(false);
   }
+  const maxSlicesFor = (p) => Math.max(1, Math.min(72, 108 - (p.smpBase | 0))) - 1;
+  /* mode / chop controls */
+  const buildBaseSel = () => { const s = $('smpBase'); s.innerHTML = ''; for (let n = 12; n <= 96; n++) { const o = el('option', null, noteName(n) + (n === 48 ? '  (default)' : '')); o.value = n; s.appendChild(o); } };
+  const autoCuts = (id, p) => { const b = Synth.samples.get(id), r = Sampler.activeRange(id); p.smpStart = r[0] > 0.02 ? r[0] : 0; p.smpEnd = b && r[1] < b.duration - 0.02 ? r[1] : 0; p.smpCuts = Sampler.detect(id, { sens: p.smpSens, max: maxSlicesFor(p) }).filter(x => x > p.smpStart + 0.06 && (!p.smpEnd || x < p.smpEnd - 0.06)).map(x => x.toFixed(3)).join(','); };
+  const rechop = () => { const id = curSample(); if (!id) return; const p = cur(); autoCuts(id, p); MM.liveUpdate(); drawWave(); updateSliceInfo(); };
+  $('smpModeSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b || !curSample()) return; const p = cur(); p.smpMode = +b.dataset.mode;
+    if (p.smpMode === 1 && !String(p.smpCuts || '').trim()) { rechop(); } MM.liveUpdate(); syncDetail(); MM.auditionNote(false);
+  });
+  $('smpSens').addEventListener('input', () => { cur().smpSens = parseFloat($('smpSens').value); $('smpSensVal').textContent = Math.round(cur().smpSens * 100) + '%'; clearTimeout(rechop.tm); rechop.tm = setTimeout(rechop, 60); });
+  $('smpChop').addEventListener('click', () => { rechop(); MM.auditionNote(false); });
+  $('smpEven').addEventListener('click', () => { const id = curSample(); if (!id) return; const n = parseInt(prompt(t('smp.evenPrompt'), '16'), 10); if (!(n >= 2)) return; const q = cur(), b0 = Synth.samples.get(id), s0 = q.smpStart || 0, e0 = q.smpEnd > 0 ? q.smpEnd : b0.duration, k = Math.min(n, maxSlices()); q.smpCuts = Array.from({ length: k - 1 }, (_, j) => s0 + (e0 - s0) * (j + 1) / k).map(x => x.toFixed(3)).join(','); MM.liveUpdate(); drawWave(); updateSliceInfo(); });
+  $('smpClearCuts').addEventListener('click', () => { cur().smpCuts = ''; cur().smpStart = 0; cur().smpEnd = 0; MM.liveUpdate(); drawWave(); updateSliceInfo(); });
+  $('smpBase').addEventListener('change', (e) => { cur().smpBase = parseInt(e.target.value, 10); MM.liveUpdate(); drawWave(); updateSliceInfo(); MM.auditionNote(false); });
+  $('smpOne').addEventListener('change', (e) => { cur().smpOne = e.target.checked ? 1 : 0; MM.liveUpdate(); });
+  buildBaseSel();
   const edit = (fn) => () => { fn(cur()); MM.liveUpdate(); };
   $('smpRoot').addEventListener('change', (e) => { cur().smpRoot = parseInt(e.target.value, 10); MM.liveUpdate(); MM.auditionNote(false); });
   $('smpLoop').addEventListener('change', (e) => { cur().smpLoop = e.target.checked ? 1 : 0; MM.liveUpdate(); });

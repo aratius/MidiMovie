@@ -25,6 +25,7 @@ X = {
   ('ul', ['<b>Add audio file</b> (WAV, MP3, M4A, OGG …), <b>Record mic</b> (up to 30 s; the browser asks permission) or <b>From video audio</b> (the loaded video’s soundtrack).',
    'Select a sample to see its waveform. Drag the orange handles to trim the start and end.',
    '<b>Original pitch</b> is the key that plays the sample unchanged; other keys play it higher or lower. Choose <i>No pitch change</i> for one-shot sound effects. <b>Loop while held</b> sustains the trimmed region.',
+   '<b>Slices (auto chop)</b>: for long recordings with many sounds, switch the mode to <i>Slices</i>. <b>Auto chop</b> finds the starts of the sounds (raise <b>Sensitivity</b> for more cuts) and every piece gets its own key, starting at <b>First slice on</b>; those keys are marked with an orange bar on the keyboard. Tap the waveform to add a cut, tap a cut to remove it, drag to move it. <b>Play whole slice</b> lets each piece ring out even on a short tap; <b>Split evenly</b> divides by count.',
    'Attack, Release, Tone, Reverb and Level shape the result. A sampler sound works like any other: record with it and each layer remembers its sample.',
    'Samples are stored in your browser and shared by all projects. Backups (ZIP) include the samples a project uses.'])]),
  export=('Exporting audio and MIDI', [
@@ -69,6 +70,7 @@ X = {
   ('ul', ['<b>添加音频文件</b>（WAV、MP3、M4A、OGG …）、<b>麦克风录音</b>（最长 30 秒；浏览器会请求权限）或 <b>提取视频音频</b>（已加载视频的音轨）。',
    '选中采样后会显示波形。拖动橙色手柄可裁剪起点和终点。',
    '<b>原始音高</b> 是原样播放该采样的琴键，其他琴键会更高或更低。一次性音效请选择 <i>不变调</i>。<b>按住时循环</b> 会持续播放裁剪区间。',
+   '<b>切片（自动切分）</b>：对包含许多声音的长录音，把模式切换为 <i>切片</i>。<b>自动切分</b> 会找出各声音的起点（提高 <b>灵敏度</b> 切点更多），每一段对应一个琴键，从 <b>第一个切片的琴键</b> 开始；这些琴键在键盘上有橙色标记。点击波形添加切点，点击切点删除，拖动移动。<b>播放完整切片</b> 让每段在短按时也完整播放；<b>均分</b> 按数量等分。',
    '起音、释音、音色明暗、混响和电平可调整效果。采样器音色与其他音色用法相同：用它录音，每个图层都会记住自己的采样。',
    '采样保存在你的浏览器中，所有项目共用。备份 (ZIP) 会包含项目所用的采样。'])]),
  export=('导出音频与 MIDI', [
@@ -112,6 +114,7 @@ X = {
   ('ul', ['<b>音声ファイルを追加</b>（WAV、MP3、M4A、OGG など）、<b>マイクで録音</b>（最長30秒。ブラウザが許可を求めます）、<b>映像の音声から</b>（読み込み済み映像のサウンドトラック）。',
    'サンプルを選ぶと波形が表示されます。オレンジのハンドルをドラッグして開始・終了位置をトリミングできます。',
    '<b>元の音程</b> はサンプルがそのまま鳴る鍵で、他の鍵は高く / 低く鳴ります。単発の効果音には <i>音程を変えない</i> を選びます。<b>押している間ループ</b> はトリミングした範囲を持続させます。',
+   '<b>スライス（自動チョップ）</b>: いろいろな音が入った長い録音は、モードを <i>スライス</i> に切り替えます。<b>自動チョップ</b> が音の頭を見つけて切り（<b>感度</b> を上げると切れ目が増えます）、各断片が <b>最初のスライスの鍵</b> から順に1鍵ずつ割り当たります。該当する鍵は鍵盤にオレンジの印が付きます。波形をタップで切れ目を追加、切れ目をタップで削除、ドラッグで移動。<b>最後まで鳴らす</b> をオンにすると短く押しても断片が最後まで鳴ります。<b>等分</b> は個数で等しく分けます。',
    'アタック、リリース、トーン、リバーブ、レベルで音を整えます。サンプラーの音も他の音色と同じ使い方で、録音すると各レイヤーが自分のサンプルを覚えています。',
    'サンプルはブラウザに保存され、全プロジェクトで共有されます。バックアップ (ZIP) にはプロジェクトが使うサンプルも含まれます。'])]),
  export=('音声とMIDIの書き出し', [

@@ -48,8 +48,14 @@
     attack: 0.005, decay: 0.3, sustain: 0.6, release: 0.25,
     pitchEnv: 0, pitchDecay: 0.08, vibRate: 5, vibDepth: 0, tremRate: 4, tremDepth: 0, bendRange: 2, spread: 0,
     reverb: 0.15, gain: 0.6,
-    sampleId: '', smpStart: 0, smpEnd: 0, smpRoot: 60, smpLoop: 0
+    sampleId: '', smpStart: 0, smpEnd: 0, smpRoot: 60, smpLoop: 0, smpMode: 0, smpCuts: '', smpBase: 48, smpOne: 1, smpSens: 0.5
   };
+  /* slice boundaries: 'a,b,c' (seconds, interior cuts) -> [0, a, b, c, duration] */
+  function parseCuts(str, dur, st, en) {
+    st = st > 0 ? Math.min(st, dur - 0.01) : 0; en = en > st + 0.01 ? Math.min(en, dur) : dur;
+    const a = String(str || '').split(',').map(parseFloat).filter(x => isFinite(x) && x > st + 0.005 && x < en - 0.005).sort((x, y) => x - y);
+    const out = [st]; a.forEach(x => { if (x - out[out.length - 1] > 0.005) out.push(x); }); out.push(en); return out;
+  }
   const samples = new Map(); // sampleId -> AudioBuffer (filled by sampler.js)
   const mk = (o) => Object.assign({}, BASE, o);
 
@@ -223,8 +229,23 @@
     }
 
     // sampler source
+    let oneShot = false;
     const smp = p.sampleId ? samples.get(p.sampleId) : null;
-    if (smp) {
+    if (smp && p.smpMode === 1) { // slice mode: every key plays its own chopped piece, unpitched
+      const cuts = parseCuts(p.smpCuts, smp.duration, p.smpStart, p.smpEnd), i = note - (p.smpBase | 0);
+      if (i >= 0 && i < cuts.length - 1) {
+        const st = cuts[i], en = cuts[i + 1], len = Math.max(0.01, en - st);
+        const s = ctx.createBufferSource(); s.buffer = smp;
+        const sg = ctx.createGain(); s.connect(sg); sg.connect(filt);
+        if (p.smpLoop) { s.loop = true; s.loopStart = st; s.loopEnd = en; s.start(when, st); }
+        else {
+          s.start(when, st, len);
+          const f = Math.min(0.006, len / 3); sg.gain.setValueAtTime(1, when + len - f); sg.gain.linearRampToValueAtTime(0, when + len);
+          oneShot = !!p.smpOne;
+        }
+        sources.push(s); nodes.push(sg); detuneTargets.push(s);
+      }
+    } else if (smp) {
       const s = ctx.createBufferSource(); s.buffer = smp;
       const st = Math.max(0, Math.min(smp.duration - 0.005, p.smpStart || 0));
       let en = p.smpEnd > 0 ? Math.min(smp.duration, p.smpEnd) : smp.duration; if (en <= st + 0.005) en = smp.duration;
@@ -260,6 +281,11 @@
     const voice = {
       release(t) {
         if (released) return; released = true;
+        if (oneShot) { // slice plays to its end regardless of how long the key is held
+          const l0 = sources[0];
+          if (l0 && ctx.constructor.name !== 'OfflineAudioContext') l0.onended = () => { nodes.forEach(n => { try { n.disconnect(); } catch (e) {} }); };
+          return;
+        }
         t = Math.max(t, when);
         const R = Math.max(0.01, p.release);
         rel.gain.setValueAtTime(1, t);
@@ -352,7 +378,7 @@
   }
 
   window.Synth = {
-    PARAM_DEFS, GROUPS, BASE, PRESETS, samples, PRESET_ORDER, midiToHz,
+    PARAM_DEFS, GROUPS, BASE, PRESETS, samples, parseCuts, PRESET_ORDER, midiToHz,
     createBus, createChannel, updateChannel, disposeChannel, setBend,
     startVoice, buildEvents, renderOffline, encodeWav
   };

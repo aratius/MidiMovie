@@ -604,6 +604,7 @@
     }
     lastNarrow = isNarrow(); document.querySelector('.piano-wrap').classList.toggle('narrow', lastNarrow);
     refreshKeys(); updateKeyLabels();
+    if (typeof updateSliceMarks === 'function' && S.inst) updateSliceMarks();
   }
   window.addEventListener('resize', () => { if (isNarrow() !== lastNarrow) buildPiano(); });
   $('pianoLeft').addEventListener('click', () => { PK.base = clamp(PK.base - 12, 24, 84); buildPiano(); });
@@ -825,6 +826,14 @@
     $('presetSel').value = S.inst.presetId in presetOptionIds() ? S.inst.presetId : 'custom';
     $('curSound').textContent = soundName(S.inst.presetId) || t('pr.custom');
     document.querySelectorAll('.pcard').forEach(c => c.setAttribute('aria-pressed', c.dataset.id === S.inst.presetId));
+    updateSliceMarks();
+  }
+  /* keys that trigger a slice get a small orange bar on the on-screen piano */
+  function updateSliceMarks() {
+    const ip = S.inst && S.inst.params, buf = ip && ip.sampleId ? Synth.samples.get(ip.sampleId) : null;
+    let lo = -1, hi = -2;
+    if (buf && ip.smpMode === 1) { lo = ip.smpBase | 0; hi = lo + Synth.parseCuts(ip.smpCuts, buf.duration, ip.smpStart, ip.smpEnd).length - 2; }
+    Object.keys(keyEls).forEach(k => keyEls[k].classList.toggle('slice', +k >= lo && +k <= hi));
   }
   function presetOptionIds() { const o = {}; PresetLib.list.concat(PresetLib.mine()).forEach(p => { o[p.id] = 1; }); return o; }
   function buildPresetSel() {
@@ -856,7 +865,8 @@
   Object.values(macroEls).forEach(e => e.addEventListener('input', applyMacros));
   function auditionNote(low) {
     ensureAudio();
-    const key = 'aud', note = low ? 36 : 60;
+    const ip = S.inst.params, key = 'aud';
+    const note = typeof low === 'number' ? low : (ip.smpMode === 1 && ip.sampleId ? (ip.smpBase | 0) : (low ? 36 : 60));
     playNote(key, note, 100); setTimeout(() => releaseNote(key), 650);
   }
   function renderSimple() {

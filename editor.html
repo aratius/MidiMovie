@@ -238,9 +238,27 @@
         <div class="smp-detail" id="smpDetail" hidden>
           <div class="smp-title"><b id="smpName"></b><span class="muted mono" id="smpDur"></span>
             <button class="btn small ghost" id="smpRename" data-i18n="smp.rename"></button><button class="btn small ghost danger" id="smpDelete" data-i18n="smp.delete"></button></div>
-          <div class="wave-wrap"><canvas id="smpWave" height="86"></canvas></div>
+          <div class="seg smp-mode" id="smpModeSeg" role="group" aria-label="Sampler mode">
+            <button type="button" data-mode="0" aria-pressed="true" data-i18n="smp.modePitch"></button>
+            <button type="button" data-mode="1" aria-pressed="false" data-i18n="smp.modeSlice"></button>
+          </div>
+          <div class="wave-wrap"><canvas id="smpWave" height="96"></canvas></div>
+          <div class="muted small-text" id="smpWaveHint"></div>
+          <div class="slice-pane" id="smpSlicePane" hidden>
+            <div class="slice-row">
+              <label class="grow"><span><span data-i18n="smp.sens"></span> <b class="mono" id="smpSensVal"></b></span><input type="range" id="smpSens" min="0" max="1" step="0.01"></label>
+              <button class="btn small primary" id="smpChop" data-i18n="smp.chop"></button>
+            </div>
+            <div class="slice-row">
+              <button class="btn small" id="smpEven" data-i18n="smp.even"></button>
+              <button class="btn small ghost" id="smpClearCuts" data-i18n="smp.clearCuts"></button>
+              <label class="inline"><span data-i18n="smp.baseKey"></span><select id="smpBase"></select></label>
+              <label class="check"><input type="checkbox" id="smpOne"><span data-i18n="smp.oneShot"></span></label>
+            </div>
+            <div class="slice-info mono" id="smpSliceInfo"></div>
+          </div>
           <div class="smp-grid">
-            <label><span data-i18n="smp.root"></span><select id="smpRoot"></select></label>
+            <label id="smpRootLab"><span data-i18n="smp.root"></span><select id="smpRoot"></select></label>
             <label class="check"><input type="checkbox" id="smpLoop"><span data-i18n="smp.loop"></span></label>
             <label><span data-i18n="p.attack"></span><input type="range" id="smpAtk" min="0.001" max="2" step="0.001"></label>
             <label><span data-i18n="p.release"></span><input type="range" id="smpRel" min="0.01" max="3" step="0.01"></label>
