@@ -945,7 +945,7 @@
   /* ================= export / project ================= */
   function toast(msg) { const e = $('toast'); e.textContent = msg; e.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { e.hidden = true; }, 3200); }
   function safeName(s) { return (s || 'midimovie').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'midimovie'; }
-  function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000); }
+  function download(blob, name) { Save.file(blob, name); }
   /* offline render of layers -> AudioBuffer (null if nothing to render) */
   async function renderAudio(layers, sr) {
     layers = layers.filter(l => l.notes.length); if (!layers.length) return null;

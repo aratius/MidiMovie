@@ -11,7 +11,7 @@
   function toast(msg) { const e = $('toast'); e.textContent = msg; e.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { e.hidden = true; }, 3000); }
   function fmtDate(ts) { try { return new Date(ts).toLocaleString(LOCALES[I18N.lang] || 'en-US', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return ''; } }
   const fmtMB = (b) => b >= 1e9 ? (b / 1e9).toFixed(1) + ' GB' : Math.round(b / 1e6) + ' MB';
-  function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000); }
+  function download(blob, name) { Save.file(blob, name); }
   const safe = (s) => (s || 'project').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'project';
 
   function buildLang() {
