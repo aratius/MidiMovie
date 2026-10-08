@@ -7,9 +7,9 @@
 <script src="license-config.js"></script>
 <script>
 (function(){
-  var D={ja:{h:'ありがとうございます',w:'キーを発行しています…',ok:'Pro のキーです。メールにも届きます(届かない場合はこのページを保存してください):',btn:'Pro を有効にして開く',ng:'キーを取得できませんでした。購入の確認メールを添えて、利用規約に記載の連絡先までご連絡ください。',t:'利用規約',s:'特定商取引法に基づく表記'},
-         en:{h:'Thank you',w:'Issuing your key…',ok:'Your Pro key (also sent by email — please save this page):',btn:'Unlock Pro',ng:'Could not fetch your key. Please contact us (see the terms) with your purchase receipt.',t:'Terms',s:'Legal notice'},
-         zh:{h:'谢谢您',w:'正在发放密钥…',ok:'您的 Pro 密钥(也会发送到邮箱,请保存此页面):',btn:'启用 Pro 并打开',ng:'无法获取密钥。请携带购买凭证,通过使用条款中的联系方式与我们联系。',t:'使用条款',s:'特定商业交易法标示'}};
+  var D={ja:{h:'ありがとうございます',w:'キーを発行しています…',ok:'Pro のキーです。このページを閉じると見られなくなります。必ずコピーして保管してください(別の端末では、このキーを Pro ダイアログに貼ります):',copy:'キーをコピー',copied:'コピーしました ✓',btn:'Pro を有効にして開く',ng:'キーを取得できませんでした。購入の確認メールを添えて、利用規約に記載の連絡先までご連絡ください。',t:'利用規約',s:'特定商取引法に基づく表記'},
+         en:{h:'Thank you',w:'Issuing your key…',ok:'Your Pro key. You will not be able to see it again after leaving this page, so please copy and keep it (on another device, paste it into the Pro dialog):',copy:'Copy key',copied:'Copied ✓',btn:'Unlock Pro',ng:'Could not fetch your key. Please contact us (see the terms) with your purchase receipt.',t:'Terms',s:'Legal notice'},
+         zh:{h:'谢谢您',w:'正在发放密钥…',ok:'您的 Pro 密钥。离开此页面后将无法再次查看,请务必复制并妥善保存(在其他设备上,请将密钥粘贴到 Pro 对话框):',copy:'复制密钥',copied:'已复制 ✓',btn:'启用 Pro 并打开',ng:'无法获取密钥。请携带购买凭证,通过使用条款中的联系方式与我们联系。',t:'使用条款',s:'特定商业交易法标示'}};
   var l='en';try{var x=localStorage.getItem('midimovie.lang');if(D[x])l=x}catch(e){}
   var d=D[l];document.documentElement.lang=l==='zh'?'zh-Hans':l;
   document.getElementById('h').textContent=d.h;document.getElementById('m').textContent=d.w;document.getElementById('lt').textContent=d.t;document.getElementById('ls').textContent=d.s;
@@ -27,7 +27,7 @@
     const r=await fetch(api.replace(/\/$/,'')+'/key?session_id='+encodeURIComponent(sid)); const j=await r.json(); if(!j.ok) throw 0;
     m.textContent=window.__thanks.ok;
     const a=document.createElement('a');a.className='b';a.href='editor.html#gift='+j.key;a.textContent=window.__thanks.btn;
-    const c=document.createElement('code');c.textContent=j.key; o.append(a,c);
+    const c=document.createElement('code');c.textContent=j.key;const cb=document.createElement('button');cb.textContent=window.__thanks.copy;cb.style.cssText='background:#2a2a30;color:#eee;border:0;border-radius:8px;padding:10px 16px;font-size:15px;cursor:pointer;margin-top:8px';cb.onclick=async()=>{try{await navigator.clipboard.writeText(j.key);cb.textContent=window.__thanks.copied}catch(e){}};o.append(a,c,cb);
   }catch(e){ m.textContent=window.__thanks.ng; }
 })();
 </script></body></html>
