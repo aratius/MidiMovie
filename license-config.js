@@ -12,3 +12,6 @@ window.MM_LICENSE = {
   contactEmail: 'aualrxse@gmail.com',      // shown on terms/privacy/tokushoho pages (empty = link to GitHub Issues). Set your public contact address here.
   keyApi: 'https://midimovie-license.aratius.workers.dev'             // Stripe route: URL of tools/stripe-license-worker.js (used by thanks.html)
 };
+
+/* Google Analytics 4 measurement id (G-XXXXXXXXXX). Empty = analytics off. See analytics.js and docs/ANALYTICS.md */
+window.MM_ANALYTICS = { gaId: '' };

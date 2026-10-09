@@ -57,7 +57,7 @@ def head(l, title, desc, url, m, extra=''):
 <html lang="{'zh-Hans' if l['code']=='zh' else l['code']}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(title)}</title><meta name="description" content="{e(desc)}"><link rel="canonical" href="{url}">{alt(m)}
 <meta property="og:type" content="website"><meta property="og:site_name" content="MidiMovie"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{BASE}icons/og.png"><meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0d0e11"><link rel="icon" href="{{R}}icons/icon-192.png"><link rel="stylesheet" href="{{R}}seo.css">{extra}</head><body>'''
+<meta name="theme-color" content="#0d0e11"><link rel="icon" href="{{R}}icons/icon-192.png"><link rel="stylesheet" href="{{R}}seo.css">{extra}<script src="{{R}}license-config.js"></script><script src="{{R}}analytics.js" defer></script></head><body>'''
 def nav(l, here):
     sw = ' · '.join(f'<a href="{HREF[k]}" hreflang="{k}"{" aria-current=page" if k==l["code"] and here=="home" else ""}>{L[k]["label"]}</a>' for k in ['en', 'ja', 'zh'])
     return f'<header><a class="logo" href="{BASE}">MidiMovie</a><nav>{sw}</nav></header><main>'

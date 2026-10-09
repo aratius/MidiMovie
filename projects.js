@@ -72,7 +72,7 @@
     Store.persist();
     location.href = 'editor.html?p=' + encodeURIComponent(id);
   }
-  $('newBtn').addEventListener('click', () => create(t('proj.untitled')));
+  $('newBtn').addEventListener('click', () => { if (window.mmTrack) mmTrack('project_new'); create(t('proj.untitled')); });
   $('importBtn').addEventListener('click', () => $('importFile').click());
   $('importFile').addEventListener('change', async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;

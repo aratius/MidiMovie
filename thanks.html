@@ -5,6 +5,7 @@
 <body><h1 id="h"></h1><p id="m"></p><div id="o"></div>
 <p style="font-size:13px;opacity:.7"><a href="terms.html" style="color:#a29bfe" id="lt"></a> · <a href="tokushoho.html" style="color:#a29bfe" id="ls"></a></p>
 <script src="license-config.js"></script>
+<script src="analytics.js"></script>
 <script>
 (function(){
   var D={ja:{h:'ありがとうございます',w:'キーを発行しています…',ok:'Pro のキーです。このページを閉じると見られなくなります。必ずコピーして保管してください(別の端末では、このキーを Pro ダイアログに貼ります):',copy:'キーをコピー',copied:'コピーしました ✓',btn:'Pro を有効にして開く',ng:'キーを取得できませんでした。購入の確認メールを添えて、利用規約に記載の連絡先までご連絡ください。',t:'利用規約',s:'特定商取引法に基づく表記'},
@@ -25,7 +26,7 @@
   try{
     if(!api||!sid) throw 0;
     const r=await fetch(api.replace(/\/$/,'')+'/key?session_id='+encodeURIComponent(sid)); const j=await r.json(); if(!j.ok) throw 0;
-    m.textContent=window.__thanks.ok;
+    m.textContent=window.__thanks.ok;try{var pk='midimovie.purchased.'+sid;if(window.mmTrack&&!localStorage.getItem(pk)){localStorage.setItem(pk,'1');mmTrack('purchase',{value:19,currency:'USD'});}}catch(_){}
     const a=document.createElement('a');a.className='b';a.href='editor.html#gift='+j.key;a.textContent=window.__thanks.btn;
     const c=document.createElement('code');c.textContent=j.key;const cb=document.createElement('button');cb.textContent=window.__thanks.copy;cb.style.cssText='background:#2a2a30;color:#eee;border:0;border-radius:8px;padding:10px 16px;font-size:15px;cursor:pointer;margin-top:8px';cb.onclick=async()=>{try{await navigator.clipboard.writeText(j.key);cb.textContent=window.__thanks.copied}catch(e){}};o.append(a,c,cb);
   }catch(e){ m.textContent=window.__thanks.ng; }

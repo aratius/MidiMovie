@@ -111,10 +111,10 @@
       msg(m === 'missing' ? t('exp.videoNoEngine') : m === 'unsupported' ? t('exp.videoUnsupported') : m === 'noaudiocodec' ? t('exp.videoNoCodec') : t('exp.videoFail'), 'bad');
     } finally { prog.hidden = true; busy(false); }
   }
-  $('expVideo').addEventListener('click', exportVideo);
-  $('expMix').addEventListener('click', () => exportWav(MM.S.layers.filter(MM.isAudible), 'mix'));
+  $('expVideo').addEventListener('click', () => { if (window.mmTrack && !proLocked()) mmTrack('export', { type: 'mp4' }); exportVideo(); });
+  $('expMix').addEventListener('click', () => { if (window.mmTrack) mmTrack('export', { type: 'wav' }); exportWav(MM.S.layers.filter(MM.isAudible), 'mix'); });
   $('expStems').addEventListener('click', exportStems);
-  $('expMidi').addEventListener('click', () => exportMidi(null, 'all'));
+  $('expMidi').addEventListener('click', () => { if (window.mmTrack) mmTrack('export', { type: 'midi' }); exportMidi(null, 'all'); });
 
   /* ---------- project: backup / restore / MIDI import ---------- */
   const prjMsg = (txt, kind) => { const b = $('prjMsg'); b.hidden = !txt; b.textContent = txt || ''; b.className = 'result' + (kind ? ' ' + kind : ''); };

@@ -105,12 +105,12 @@
     $('#proWhy').hidden = !why || pro; $('#proWhy').textContent = why ? tr('pro.why', { feature: why }) : '';
     const ul = $('#proList'); ul.innerHTML = ''; ['pro.f1', 'pro.f2', 'pro.f3', 'pro.f4', 'pro.f6', 'pro.f5'].forEach(k => { const li = document.createElement('li'); li.textContent = tr(k); ul.appendChild(li); });
     $('#proPrice').textContent = priceNow() ? tr('pro.price', { price: priceNow() }) : '';
-    const buy = $('#proBuy'); buy.textContent = tr('pro.buy'); buy.hidden = !cfg.checkoutUrl || pro; if (cfg.checkoutUrl) buy.href = cfg.checkoutUrl;
+    const buy = $('#proBuy'); buy.textContent = tr('pro.buy'); buy.hidden = !cfg.checkoutUrl || pro; if (cfg.checkoutUrl) { buy.href = cfg.checkoutUrl; buy.onclick = () => { if (window.mmTrack) mmTrack('checkout_click'); }; }
     $('#proKeyH').textContent = tr('pro.haveKey'); $('#proKey').placeholder = tr('pro.keyPh'); $('#proAct').textContent = tr('pro.activate');
     $('#proKeySec').hidden = pro; $('#proOnSec').hidden = !pro || !lic;
     $('#proOn').textContent = lic ? (lic.kind === 'signed' ? tr('pro.activeGift', { name: lic.name || mask(lic.id) }) : tr('pro.active', { key: mask(lic.key) })) : ''; $('#proOff').textContent = tr('pro.deactivate');
   }
-  function open(feature) { if (!dlg) build(); why = feature ? tr('pro.feat.' + feature) : ''; msg(''); fill(); if (!dlg.open) dlg.showModal(); }
+  function open(feature) { if (window.mmTrack) mmTrack('pro_modal', { feature: feature || 'manual' }); if (!dlg) build(); why = feature ? tr('pro.feat.' + feature) : ''; msg(''); fill(); if (!dlg.open) dlg.showModal(); }
   function require(feature) { if (isPro()) return true; open(feature); return false; }
   function refresh() {
     document.documentElement.classList.toggle('not-pro', cfg.enforce && !isPro());
@@ -162,6 +162,6 @@
     refresh(); recheck(); maybePopup();
     if (window.I18N && I18N.onChange) I18N.onChange(() => refresh());
   }
-  window.Pro = { cfg, isPro, licensed, require, open, activate, deactivate, refresh, recheck };
+  window.Pro = { cfg, isPro, licensed, require, open, activate: async (k) => { const r = await activate(k); if (r && r.ok && window.mmTrack) mmTrack('pro_activated'); return r; }, deactivate, refresh, recheck };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
